@@ -1,0 +1,9 @@
+#ifndef _UTIL_H
+#define _UTIL_H
+
+#define DEFAULT_LISTEN_PORT 1080
+#define DEFAULT_LISTEN_BACKLOG 5
+
+#define HTTP_HEADER_SIZE 4096
+
+#endif
