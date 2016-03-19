@@ -9,12 +9,13 @@
 
 
 typedef struct session {
-    int scok;
+    int sock;
     char header[HTTP_HEADER_SIZE];
     uint32_t buffer_cursor;
     uint32_t parse_cursor;
     uint32_t pre_parse_cursor;
 
+    uint16_t is_request_valid;
 
     request_parse_status_t parse_status;
 

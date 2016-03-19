@@ -43,12 +43,17 @@
 
 #define HTTP_PROTOCOL_LEN              0x0008
 
+#define HTTP_RESPONSE_BUF_SIZE         40960
+
+#define HTTP_ROOT_PATH                 "/home/winter/fk-server/html"
+
 struct session;
 
 typedef enum {
     REQUEST_LINE,
     REQUEST_HEADER,
-    REQUEST_DATA
+    REQUEST_DATA,
+    REQUEST_END
 } request_parse_status_t;
 
 typedef struct http_request{
@@ -57,7 +62,7 @@ typedef struct http_request{
 
     char *Accept;
 
-    char *reuqest_path;
+    char *uri;
 
 } http_request_t;
 

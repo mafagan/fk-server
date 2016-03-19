@@ -2,10 +2,69 @@
 #include "net.h"
 
 #include <string.h>
+#include <unistd.h>
 
 static void do_http_request_line_parse(struct session*);
 static void do_http_request_header_parse(struct session*);
+static void do_response(struct session*);
 
+
+
+void do_response(struct session *session)
+{
+    char response_buffer[HTTP_RESPONSE_BUF_SIZE];
+    uint32_t write_cursor = 0;
+
+    //TODO execute request
+
+
+    /****************
+     * Test code    *
+     ****************/
+    int ret;
+    ret = snprintf(response_buffer + write_cursor,
+            HTTP_RESPONSE_BUF_SIZE - write_cursor - 1,
+            "%s %d %s\n", "HTTP/1.1", HTTP_OK, "OK");
+    write_cursor += ret;
+
+    ret = snprintf(response_buffer + write_cursor,
+            HTTP_RESPONSE_BUF_SIZE - write_cursor - 1,
+            "server: feike\n");
+    write_cursor += ret;
+
+
+
+    char file_content[8192];
+    char file_path[256];
+
+    snprintf(file_path, 256, HTTP_ROOT_PATH);
+    strcat(file_path, session->request.uri);
+
+    FILE *stream = fopen(file_path, "r");
+    int num_read = fread(file_content, sizeof(char), 8192, stream);
+
+    fclose(stream);
+
+    ret = snprintf(response_buffer + write_cursor,
+            HTTP_RESPONSE_BUF_SIZE - write_cursor - 1,
+            "Content-Length: %d\n", num_read);
+
+    write_cursor += ret;
+
+    ret = snprintf(response_buffer + write_cursor,
+            HTTP_RESPONSE_BUF_SIZE - write_cursor - 1,
+            "Content-Type: text/html\n");
+
+    write_cursor += ret;
+    response_buffer[write_cursor++] = '\n';
+    response_buffer[write_cursor] = '\0';
+
+    strcat(response_buffer, file_content);
+
+    ret = write(session->sock, response_buffer, write_cursor + num_read);
+
+    if (ret < 0) return;
+}
 
 void do_http_request_line_parse(struct session *session)
 {
@@ -25,7 +84,7 @@ void do_http_request_line_parse(struct session *session)
         //TODO
     }
 
-    session->request.reuqest_path = header + tmpCursor;
+    session->request.uri = header + tmpCursor;
 
     while (tmpCursor < session->parse_cursor) {
         if (header[tmpCursor] == ' ') {
@@ -58,7 +117,12 @@ void do_http_request_line_parse(struct session *session)
 
 void do_http_request_header_parse(struct session *session)
 {
-
+    if (session->parse_cursor - session->pre_parse_cursor == 1) {
+        session->pre_parse_cursor = session->parse_cursor;
+        session->parse_status = REQUEST_END;
+    } else {
+        session->pre_parse_cursor = session->parse_cursor;
+    }
 }
 
 void do_http_request_parse(struct session* session)
@@ -92,6 +156,9 @@ void do_http_request_parse(struct session* session)
 
                     /* header ending check will be performed */
                     do_http_request_header_parse(session);
+
+                    if (session->parse_status == REQUEST_END) break;
+
                 } else {
                     session->parse_cursor ++;
                 }
@@ -102,6 +169,9 @@ void do_http_request_parse(struct session* session)
             //TODO
             break;
 
+        case REQUEST_END:
+            do_response(session);
+            break;
         default:
 
             break;
