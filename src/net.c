@@ -72,6 +72,7 @@ static void do_accept(int sock, short event, void *arg)
     session_t *new_session = (session_t*)malloc(sizeof(struct session));
     new_session->buffer_cursor = 0;
     new_session->parse_cursor = 0;
+    new_session->parse_status = REQUEST_LINE;
 
     struct event *read_ev = event_new(base, newfd, EV_READ|EV_PERSIST,
             read_cb, (void*)new_session);

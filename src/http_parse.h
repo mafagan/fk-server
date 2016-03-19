@@ -35,10 +35,29 @@
 #define HTTP_PUT                       0x0010
 #define HTTP_DELETE                    0x0020
 
+/* http protocol */
+#define HTTP_0_9                       0x0002
+#define HTTP_1_0                       0x0004
+#define HTTP_1_1                       0x0008
+#define HTTP_2_0                       0x0010
+
+#define HTTP_PROTOCOL_LEN              0x0008
+
 struct session;
 
+typedef enum {
+    REQUEST_LINE,
+    REQUEST_HEADER,
+    REQUEST_DATA
+} request_parse_status_t;
+
 typedef struct http_request{
-    uint32_t request_method;
+    uint16_t request_method;
+    uint16_t request_protocal;
+
+    char *Accept;
+
+    char *reuqest_path;
 
 } http_request_t;
 
