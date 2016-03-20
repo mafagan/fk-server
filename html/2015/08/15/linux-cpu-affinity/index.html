@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>Linux中程序的CPU亲和性(affinity) | 坚强的鸡蛋</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="之前在nginx的配置文件中看到有一个配置选项worker_cpu_affinity用来配置nginx worker process的cpu亲和性，cpu亲和性就是进程或者线程在某个给定的cpu上尽量长时间地运行而不被迁移到其它处理器上的特性。这个没什么问题，我好奇的是这东西到底有多大作用。上网看了下相关的文档，发现设置CPU亲和性的API也就两三种，分别是针对线程和进程的，这里就用线程来测试一下">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux中程序的CPU亲和性(affinity)">
+<meta property="og:url" content="https://danye.me/2015/08/15/linux-cpu-affinity/">
+<meta property="og:site_name" content="坚强的鸡蛋">
+<meta property="og:description" content="之前在nginx的配置文件中看到有一个配置选项worker_cpu_affinity用来配置nginx worker process的cpu亲和性，cpu亲和性就是进程或者线程在某个给定的cpu上尽量长时间地运行而不被迁移到其它处理器上的特性。这个没什么问题，我好奇的是这东西到底有多大作用。上网看了下相关的文档，发现设置CPU亲和性的API也就两三种，分别是针对线程和进程的，这里就用线程来测试一下">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Linux中程序的CPU亲和性(affinity)">
+<meta name="twitter:description" content="之前在nginx的配置文件中看到有一个配置选项worker_cpu_affinity用来配置nginx worker process的cpu亲和性，cpu亲和性就是进程或者线程在某个给定的cpu上尽量长时间地运行而不被迁移到其它处理器上的特性。这个没什么问题，我好奇的是这东西到底有多大作用。上网看了下相关的文档，发现设置CPU亲和性的API也就两三种，分别是针对线程和进程的，这里就用线程来测试一下">
+
+  
+    <link rel="alternative" href="/atom.xml" title="坚强的鸡蛋" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  <link href="//fonts.googleapis.com/css?family=Ubuntu" rel="stylesheet" type="text/css">
+  <link rel="stylesheet" href="/css/style.css" type="text/css">
+
+  
+</head>
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">坚强的鸡蛋</a>
+      </h1>
+      
+        <h2 id="subtitle-wrap">
+          <a href="/" id="subtitle">Collect the dots in your life.</a>
+        </h2>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="sub-nav">
+        
+          <a id="nav-home-icon" class="nav-icon" href="/"></a>
+        
+          <a id="nav-archives-icon" class="nav-icon" href="/archives"></a>
+        
+          <a id="nav-about-icon" class="nav-icon" href="/about"></a>
+        
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+      </nav>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-linux-cpu-affinity" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      Linux中程序的CPU亲和性(affinity)
+    </h1>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2015-08-15T06:26:00.000Z" itemprop="datePublished">08-15-2015</time>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/coding/">coding</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>之前在nginx的配置文件中看到有一个配置选项<code>worker_cpu_affinity</code>用来配置nginx worker process的cpu亲和性，cpu亲和性就是进程或者线程在某个给定的cpu上尽量长时间地运行而不被迁移到其它处理器上的特性。这个没什么问题，我好奇的是这东西到底有多大作用。上网看了下相关的文档，发现设置CPU亲和性的API也就两三种，分别是针对线程和进程的，这里就用线程来测试一下。<br><a id="more"></a></p>
+<h2 id="pthread_cpu_affinity">pthread cpu affinity</h2>
+<p>线程中设置cpu亲和性的api和变量主要有以下几个：</p>
+<ul>
+<li>cpu_set_t： cpu的掩码集合</li>
+<li>CPU_ZERO： cpu掩码清零</li>
+<li>CPU_SET： 设置cpu掩码</li>
+<li>pthread_setaffinity_np： 设置线程亲和性，成功返回0。</li>
+<li>pthread_getaffinity_np： 查看亲和性设置结果，成功返回0。</li>
+</ul>
+<p>注：这些api仅在FreeBSD和linux下可用，且在使用前须在所有头文件的前面定义宏<code>_GNU_SOURCE</code>。</p>
+<p>利用这几个api，我写了个小程序开启了和cpu核心数相等的线程数，分别在默认情况下和设置了cpu亲和性的情况下进行等量的计算，最后分别计算出它们的消耗时间。</p>
+<p>经过多次的测试，两组数据相当接近，差距基本在误差范围内，不过设置了cpu亲和性的一组线程消耗的时间总是要多一点。</p>
+<p>需要查看代码的童鞋可以点<a href="https://github.com/mafagan/blog-code/blob/master/code/thread_cpu.c" target="_blank" rel="external">这里</a>。</p>
+<h2 id="nginx的cpu_affinity测试">nginx的cpu affinity测试</h2>
+<p>既然自己的测试结果不太给力，那还是拿nginx来测吧。我是用的是nginx的默认配置文件，只是对worker<br>process的数量还有worker_cpu_affinity配置项进行了改动，然后用apache的ab程序来进行请求测试:</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">ab -n <span class="number">50000</span> -<span class="built_in">c</span> <span class="number">500</span> http:<span class="comment">//10.211.55.4/</span></div></pre></td></tr></table></figure>
+
+<p>测试的结果总体上和我写得程序的测试结果相近，两组配置程序的表现差距都在误差范围内，但是数值上设置了cpu亲和性的一组总是要偏低。</p>
+<h2 id="总结">总结</h2>
+<p>后来我又在网上看了很多的相关资料，发现linux的内核进程调度器天生具有被称为软cpu亲和性的特性，这意味着进程通常不会在处理器之间频繁迁移。并且，设置cpu亲和性和提高性能两者并没有直接的关系，它只能尽可能地提高cpu的利用率，就算是提高cpu利用率这一点也是无法保证的。也许就像一位linux内核开发者说的：“猜测内核的行为是一件非常困难的事情。”</p>
+<p>而根据网上的优化案例，nginx的cpu亲和性设置确实在某些时候和某些环境下能够提升程序的性能，程序的优化很多时候也并不仅仅只是改一个参数那么简单，还是要在具体的硬件和软件环境下进行测试才能够找出最优的方案。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://danye.me/2015/08/15/linux-cpu-affinity/" data-id="nuxzib67m9gpvv6b" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/affinity/">affinity</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/cpu/">cpu</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/linux/">linux</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nginx/">nginx</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2015/08/27/cookie-hack/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          利用cookie可以做的一些事情
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2015/08/05/nginx-mutex-analysis-2/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">nginx中的accept-mutex源码分析(二)</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2016 Huaguan, Ma<br>
+      <a href="https://github.com/steven5538/hexo-theme-athena" target="_blank">Athena</a> by <a href="http://steven5538.tw" target="_blank">Steven5538</a> | Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css" type="text/css">
+
+  <script src="/fancybox/jquery.fancybox.pack.js" type="text/javascript"></script>
+
+
+
+<script src="/js/script.js" type="text/javascript"></script>
+
+  </div>
+</body>
+</html>

@@ -35,6 +35,8 @@ void read_cb(int sock, short event, void *arg)
     int ret = read(sock, session->header,
             HTTP_HEADER_SIZE - session->buffer_cursor);
 
+
+    printf("recv %d bytes\n", ret);
     if (ret == 0) {
         close(sock);
 
@@ -51,7 +53,6 @@ void read_cb(int sock, short event, void *arg)
         }
 
         do_http_request_parse(session);
-        printf("%s\n", session->header);
 
     }
 }
@@ -73,6 +74,7 @@ static void do_accept(int sock, short event, void *arg)
     new_session->buffer_cursor = 0;
     new_session->parse_cursor = 0;
     new_session->parse_status = REQUEST_LINE;
+    new_session->sock = newfd;
 
     struct event *read_ev = event_new(base, newfd, EV_READ|EV_PERSIST,
             read_cb, (void*)new_session);

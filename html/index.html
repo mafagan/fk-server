@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>坚强的鸡蛋</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="这里有一只坚强的鸡蛋.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="坚强的鸡蛋">
+<meta property="og:url" content="https://danye.me/">
+<meta property="og:site_name" content="坚强的鸡蛋">
+<meta property="og:description" content="这里有一只坚强的鸡蛋.">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="坚强的鸡蛋">
+<meta name="twitter:description" content="这里有一只坚强的鸡蛋.">
+
+  
+    <link rel="alternative" href="/atom.xml" title="坚强的鸡蛋" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  <link href="//fonts.googleapis.com/css?family=Ubuntu" rel="stylesheet" type="text/css">
+  <link rel="stylesheet" href="/css/style.css" type="text/css">
+
+  
+</head>
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">坚强的鸡蛋</a>
+      </h1>
+      
+        <h2 id="subtitle-wrap">
+          <a href="/" id="subtitle">Collect the dots in your life.</a>
+        </h2>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="sub-nav">
+        
+          <a id="nav-home-icon" class="nav-icon" href="/"></a>
+        
+          <a id="nav-archives-icon" class="nav-icon" href="/archives"></a>
+        
+          <a id="nav-about-icon" class="nav-icon" href="/about"></a>
+        
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+      </nav>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main">
+  
+    <article id="post-libevent源码框架分析" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2015/12/26/libevent源码框架分析/">Libevent源码分析</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2015-12-26T02:25:00.000Z" itemprop="datePublished">12-26-2015</time>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/coding/">coding</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>libevent是一个事件触发(<strong>Reactor</strong>)的网络库，适用于windows、linux、bsd等多种平台，内部使用select、epoll、kqueue等系统调用管理事件机制。与其它网络库相比，libevent最大的特点就是很好的整合了I/O、timer以及signal的处理。之前我曾经在实习项目中用到过libevent，由于当时对整个libevent的运行方式不太熟悉，导致设计程序框架的时候多了很多不必要的考虑和编码，所以就在这里对libevent的核心部分进行一次剖析。<br>
+        
+          <p class="article-more-link">
+            <a href="/2015/12/26/libevent源码框架分析/#more">Read More</a>
+          </p>
+        
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://danye.me/2015/12/26/libevent源码框架分析/" data-id="fg0w8gwfnvumkx1h" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/libevent/">libevent</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/signal/">signal</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/unix/">unix</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-libevargs" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2015/09/15/libevargs/">libev回调函数的参数传递问题</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2015-09-15T10:29:00.000Z" itemprop="datePublished">09-15-2015</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>libev是一个类似于libevent的事件驱动型的网络库，之前用它来做项目的时候对它由很高的期望，谁知一上手就遇到了挺无语的问题，先来看下libev的官方示例：<br>
+        
+          <p class="article-more-link">
+            <a href="/2015/09/15/libevargs/#more">Read More</a>
+          </p>
+        
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://danye.me/2015/09/15/libevargs/" data-id="el9nsygi6nirqxdj" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/callback/">callback</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/libev/">libev</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-cookie-hack" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2015/08/27/cookie-hack/">利用cookie可以做的一些事情</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2015-08-27T15:15:00.000Z" itemprop="datePublished">08-27-2015</time>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/coding/">coding</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>记得还是在学Qt编程的时候，做过一个练手项目，产品是一个搜索Chrome的cookie内容的小软件。Chrome的cookie保存在用户目录的一个sqlite文件中，具体路径上网搜一下就知道了。当时比较天真，想看看cookie里面有没有明文保存的密码，结果当然是得到一堆乱码，最后就不了了之了。<br>
+        
+          <p class="article-more-link">
+            <a href="/2015/08/27/cookie-hack/#more">Read More</a>
+          </p>
+        
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://danye.me/2015/08/27/cookie-hack/" data-id="0zrv5z2dd01e7ne8" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/aes/">aes</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/chrome/">chrome</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/cookie/">cookie</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/http/">http</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/python/">python</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-linux-cpu-affinity" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2015/08/15/linux-cpu-affinity/">Linux中程序的CPU亲和性(affinity)</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2015-08-15T06:26:00.000Z" itemprop="datePublished">08-15-2015</time>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/coding/">coding</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>之前在nginx的配置文件中看到有一个配置选项<code>worker_cpu_affinity</code>用来配置nginx worker process的cpu亲和性，cpu亲和性就是进程或者线程在某个给定的cpu上尽量长时间地运行而不被迁移到其它处理器上的特性。这个没什么问题，我好奇的是这东西到底有多大作用。上网看了下相关的文档，发现设置CPU亲和性的API也就两三种，分别是针对线程和进程的，这里就用线程来测试一下。<br>
+        
+          <p class="article-more-link">
+            <a href="/2015/08/15/linux-cpu-affinity/#more">Read More</a>
+          </p>
+        
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://danye.me/2015/08/15/linux-cpu-affinity/" data-id="nuxzib67m9gpvv6b" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/affinity/">affinity</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/cpu/">cpu</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/linux/">linux</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nginx/">nginx</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-nginx-mutex-analysis-2" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2015/08/05/nginx-mutex-analysis-2/">nginx中的accept-mutex源码分析(二)</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2015-08-05T14:24:00.000Z" itemprop="datePublished">08-05-2015</time>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/coding/">coding</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>在上篇文章里我们了解了nginx使用accept-mutex解决『惊群』问题的方法，其实在nginx的架构中，accept-mutex还起到了另外一个作用，负载均衡。</p>
+<h2 id="worker_process的负载均衡">worker process的负载均衡</h2>
+<p>在nginx抢夺accept-mutex之前有一个判断条件</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">if</span> (ngx_accept_disabled &gt; <span class="number">0</span>) {</div><div class="line">    ngx_accept_disabled--;                </div><div class="line">} <span class="keyword">else</span> {<span class="keyword">...</span>}</div></pre></td></tr></table></figure>
+
+<p>很显然，如果ngx_use_accept_mutex为正，这个worker会放弃这一次抢夺mutex的机会。而在每次抢夺mutex之前(或者说抢夺mutex之后)，worker都会对ngx_accept_disabled这个变量的值进行计算，算法如下</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line">ngx_accept_disabled = ngx_cycle-&gt;connection_n / <span class="number">8</span></div><div class="line">                        - ngx_cycle-&gt;free_connection_n;</div></pre></td></tr></table></figure>
+
+<p>connection_n表示的是最大连接数，free_connection_n表示的就是剩余连接数，因此当剩余连接少于总连接数的八分之一，也就是已用连接数多于总连接数的八分之七，worker就会放弃这一次抢夺mutex的机会。那如果所有的worker的connection都超过八分之七哪怎么办？会不会导致整个nginx停止工作？这个你可以放心，注意代码里有这么一行<code>ngx_accept_disabled--;</code>，很明显worker不会一直放弃抢夺mutex的机会，因为每放弃一次，该变量的值都会减少一次，直至小于0.<br>注：最大连接数在nginx中是一个可配置选项，名为worker connections，下面是官方的解释，</p>
+<blockquote>
+<p>Sets the maximum number of simultaneous connections that can be opened<br>by a worker process.</p>
+</blockquote>
+<h2 id="结语">结语</h2>
+<p>之前对这一部分的代码一直很好奇很期待，现在了解了之后倒是觉得有一点点失望。不过，这里的负载均衡指的是nginx作为服务器时使用的平衡各个worker负载的方法，至于我们用得更多的nginx作为反向代理服务器使用的负载均衡是完全不同的方法，有空再研究下里面的代码。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://danye.me/2015/08/05/nginx-mutex-analysis-2/" data-id="l4xsdg3xo2vnormf" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/algorithm/">algorithm</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mutex/">mutex</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nginx/">nginx</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-nginx-mutex-analysis" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2015/07/31/nginx-mutex-analysis/">nginx中的accept-mutex源码分析(一)</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2015-07-31T06:26:00.000Z" itemprop="datePublished">07-31-2015</time>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/coding/">coding</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>最近的项目遇到了些麻烦，于是就到各家项目的源码里东逛逛西逛逛，看看有没有什么值得借鉴(chao)的东西，一来二去总算是找(chao)到了一些有用的东西，同时还无意间了解了下nginx的源码结构，其中nginx对于accept的处理倒是让我有种别开生面的赶脚(菜鸟本质暴露了…)，所以这里就写下来做个小小的记录。<br>
+        
+          <p class="article-more-link">
+            <a href="/2015/07/31/nginx-mutex-analysis/#more">Read More</a>
+          </p>
+        
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://danye.me/2015/07/31/nginx-mutex-analysis/" data-id="cvd46nj0cdaiupzo" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mutex/">mutex</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nginx/">nginx</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-nested-type" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2015/04/27/nested-type/">《STL源码剖析》读书笔记(二)——typename与嵌套依赖类型</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2015-04-26T16:56:00.000Z" itemprop="datePublished">04-27-2015</time>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/coding/">coding</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>在C++泛型编程中，template中的参数主要有两种声明方法，一种是typename，另一种是class。在这种情况下，typename和class是没有区别的，也就是说是使用typename还是class可以根据自己的喜好选择。</p>
+<h2 id="typename在嵌套类型中的使用">typename在嵌套类型中的使用</h2>
+<p>typename在template中的作用可能是最为大家所熟知的，但是反倒是typename最主要的作用大家(其实就是我，不然也不会有这篇笔记啦。。)用得比较少，先看一下下面这段代码</p>
+<figure class="highlight C++"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">template</span> &lt;<span class="keyword">class</span> Parm&gt;</div><div class="line">Parm minus( Parm* instance )</div><div class="line">{</div><div class="line">    Parm::name * p; <span class="comment">// 这是一个指针声明还是乘法?</span></div><div class="line">}</div></pre></td></tr></table></figure>
+
+<p>假设传入instance的类型如下：</p>
+<figure class="highlight C++"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">struct</span> Real</div><div class="line">{</div><div class="line">    <span class="keyword">typedef</span> <span class="keyword">int</span> name;</div><div class="line">    ...</div><div class="line">};</div></pre></td></tr></table></figure>
+
+<p>像这种情况，name会被编译器视作Parm类的静态变量，但是很明显，<code>Parm::name *p</code>的本意是想声明一个指针的，这时候就需要在前面加一个<code>typename</code>，这样编译器就知道<code>Parm::name</code>是一个类型了。</p>
+<figure class="highlight C++"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">template</span> &lt;<span class="keyword">class</span> Parm&gt;</div><div class="line">Parm minus( Parm* instance )</div><div class="line">{</div><div class="line">    <span class="keyword">typename</span> Parm::name * p; <span class="comment">// 这是一个指针声明</span></div><div class="line">}</div></pre></td></tr></table></figure>
+
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://danye.me/2015/04/27/nested-type/" data-id="6zp0v4lx4ja45jwn" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/C/">C++</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/STL/">STL</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nested-type/">nested type</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-associated-types" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2015/04/16/associated-types/">《STL源码剖析》读书笔记(一)——迭代器的相应类型</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2015-04-16T10:53:00.000Z" itemprop="datePublished">04-16-2015</time>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/coding/">coding</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>迭代器是一种智能指针，主要完成的工作无非就是提取它所指向的内容和成员的访问。</p>
+<h2 id="迭代器的相应类型(台译作『型别』)">迭代器的相应类型(台译作『型别』)</h2>
+<p>问题：现在有一个迭代器，在算法的实现中需要获取它的相应类型，也就是迭代器所指向对象的类型，应该怎么做？</p>
+<p>其中的一种解决方法就是使用function template的参数推导(argument deducation)机制。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div></pre></td><td class="code"><pre><div class="line"></div><div class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> T&gt;</div><div class="line"><span class="keyword">void</span> real_func(T instance)</div><div class="line">{</div><div class="line">        <span class="built_in">cout</span> &lt;&lt; instance &lt;&lt; endl;</div><div class="line"></div><div class="line">}</div><div class="line"></div><div class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> T&gt;</div><div class="line"><span class="keyword">void</span> func(T iter)</div><div class="line">{</div><div class="line">        real_func(*iter);</div><div class="line"></div><div class="line">}</div><div class="line"></div><div class="line"><span class="keyword">int</span> main()</div><div class="line">{</div><div class="line">    <span class="keyword">int</span> a = <span class="number">2</span>;</div><div class="line">    func(&a);</div><div class="line">}</div></pre></td></tr></table></figure>
+
+<p>这种方法可以解决大多数应用的情况，巧妙地获取了迭代器所指向对象的类型。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://danye.me/2015/04/16/associated-types/" data-id="p0wcs6zsq9a1ztrd" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/C/">C++</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/STL/">STL</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/iterator/">iterator</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-leetcode-pow" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2015/03/08/leetcode-pow/">leetcode pow(x,n)解题报告</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2015-03-07T17:52:00.000Z" itemprop="datePublished">03-08-2015</time>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/coding/">coding</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>题目很简洁，就是实现pow(x,n)。</p>
+<h2 id="解题思路">解题思路</h2>
+<p>直接乘n遍x，时间复杂度O(n)，超时。</p>
+<p>二分法，这个比较容易想到，网上也有不少类似的解法，时间复杂度O(logn)，可以通过。</p>
+<p>还有一种方法：</p>
+<p>对比下这条式子:</p>
+<p>用二进制角度来看n，第i个比特位上的1等价于x^(2^i)，因此可以先打表，保存<code>x^(2^0)...x(2^(sizeof(int)*8))</code>的值，然后遍历n的每个比特位进行计算，时间复杂度O(1)。</p>
+<p>注意事项：</p>
+<ul>
+<li>n小于0的情况。</li>
+<li>n为int可表示的最小值的情况。</li>
+</ul>
+<p>Accept代码如下：</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">class</span> Solution {</div><div class="line"><span class="keyword">public</span>:</div><div class="line">    <span class="keyword">double</span> <span class="built_in">pow</span>(<span class="keyword">double</span> x, <span class="keyword">int</span> n) {</div><div class="line">        <span class="keyword">bool</span> flag = <span class="keyword">false</span>;</div><div class="line">        </div><div class="line">        <span class="keyword">if</span>(n==<span class="number">0</span>) <span class="keyword">return</span> <span class="number">1</span>;</div><div class="line">        </div><div class="line">        <span class="keyword">if</span>(n&lt;<span class="number">0</span>){</div><div class="line">            x = <span class="number">1</span>/x;</div><div class="line">            n = -<span class="number">1</span> * (n + <span class="number">1</span>); <span class="comment">//INT_MIN不可以直接乘-1</span></div><div class="line">            flag = <span class="keyword">true</span>;</div><div class="line">        }</div><div class="line">        </div><div class="line">        <span class="stl_container"><span class="built_in">vector</span>&lt;<span class="keyword">double</span>&gt;</span> res;</div><div class="line">        <span class="keyword">double</span> tmp = x;</div><div class="line">        </div><div class="line">        res.push_back(<span class="number">1</span>);</div><div class="line">        res.push_back(x);</div><div class="line">        </div><div class="line">        <span class="keyword">for</span>(<span class="keyword">int</span> i=<span class="number">2</span>; i&lt;<span class="keyword">sizeof</span>(<span class="keyword">int</span>)*<span class="number">8</span>; i++) res.push_back(res[i-<span class="number">1</span>]*res[i-<span class="number">1</span>]);</div><div class="line"></div><div class="line">        <span class="keyword">int</span> bits = n;</div><div class="line">        <span class="keyword">double</span> retvalue = <span class="number">1</span>;</div><div class="line"></div><div class="line">        <span class="keyword">for</span>(<span class="keyword">int</span> i=<span class="number">0</span>; i&lt;<span class="keyword">sizeof</span>(<span class="keyword">int</span>)*<span class="number">8</span>; i++){</div><div class="line">            <span class="keyword">if</span>((bits&<span class="number">0x01</span>) != <span class="number">0</span>) retvalue *= res[i+<span class="number">1</span>];</div><div class="line">            bits = bits &gt;&gt; <span class="number">1</span>;</div><div class="line">        }</div><div class="line"></div><div class="line">        <span class="keyword">if</span>(flag) <span class="keyword">return</span> retvalue*x;</div><div class="line">        <span class="keyword">else</span> <span class="keyword">return</span> retvalue;</div><div class="line">    }</div><div class="line">};</div></pre></td></tr></table></figure>
+
+<p>差点忘了，三八妇女节快乐^_^！</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://danye.me/2015/03/08/leetcode-pow/" data-id="z0xakn85mt6hb2l4" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/C/">C++</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/algorithm/">algorithm</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/leetcode/">leetcode</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-wechat-lishi" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2015/02/21/wechat-lishi/">微信红包算法探讨</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2015-02-21T08:29:00.000Z" itemprop="datePublished">02-21-2015</time>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/coding/">coding</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>今年过年微信红包成了全民焦点，虽然大多数的红包就一块八角的样子，还是搞得大家乐此不彼地，蛋爷我年三十晚什么都没干就守在手机旁边不是摇手机红包就是抢群红包。作为一名程序猿，自然会想了解下红包的实现细节。我在网上谷歌了下，微信目前是没有公布红包的实现细节的，所以这里就提出一个自己的方案。</p>
+<h2 id="微信红包规则">微信红包规则</h2>
+<p>红包领了不少，据观察红包主要有以下几个限制条件：</p>
+<ol>
+<li>所有人都能分到红包，也就是不会出现红包数值为0的情况。</li>
+<li>所有人的红包数值加起来等于支付的金额。</li>
+<li>红包波动范围比较大，约5%~8%的红包数值在平均值的两倍以上，同时数额0.01出现的概率比较高。</li>
+<li>红包的数值是随机的，并且数值的分布近似于正态分布。
+        
+          <p class="article-more-link">
+            <a href="/2015/02/21/wechat-lishi/#more">Read More</a>
+          </p>
+        
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://danye.me/2015/02/21/wechat-lishi/" data-id="bkm7zcnqs5t5v6ui" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/C/">C++</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/algorithm/">algorithm</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/微信/">微信</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/红包/">红包</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+  
+    <nav id="page-nav">
+      <span class="page-number current">1</span><a class="page-number" href="/page/2/">2</a><a class="extend next" rel="next" href="/page/2/">Next &raquo;</a>
+    </nav>
+  
+</section>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2016 Huaguan, Ma<br>
+      <a href="https://github.com/steven5538/hexo-theme-athena" target="_blank">Athena</a> by <a href="http://steven5538.tw" target="_blank">Steven5538</a> | Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css" type="text/css">
+
+  <script src="/fancybox/jquery.fancybox.pack.js" type="text/javascript"></script>
+
+
+
+<script src="/js/script.js" type="text/javascript"></script>
+
+  </div>
+</body>
+</html>

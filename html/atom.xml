@@ -1,0 +1,836 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title><![CDATA[坚强的鸡蛋]]></title>
+  <subtitle><![CDATA[Collect the dots in your life.]]></subtitle>
+  <link href="/atom.xml" rel="self"/>
+  <link href="https://danye.me/"/>
+  <updated>2016-01-27T09:50:25.976Z</updated>
+  <id>https://danye.me/</id>
+  
+  <author>
+    <name><![CDATA[Huaguan, Ma]]></name>
+    <email><![CDATA[mahuaguan@126.com]]></email>
+  </author>
+  
+  <generator uri="http://zespia.tw/hexo/">Hexo</generator>
+  
+  <entry>
+    <title><![CDATA[Libevent源码分析]]></title>
+    <link href="https://danye.me/2015/12/26/libevent%E6%BA%90%E7%A0%81%E6%A1%86%E6%9E%B6%E5%88%86%E6%9E%90/"/>
+    <id>https://danye.me/2015/12/26/libevent源码框架分析/</id>
+    <published>2015-12-26T02:25:00.000Z</published>
+    <updated>2016-01-27T09:41:05.000Z</updated>
+    <content type="html"><![CDATA[<p>libevent是一个事件触发(<strong>Reactor</strong>)的网络库，适用于windows、linux、bsd等多种平台，内部使用select、epoll、kqueue等系统调用管理事件机制。与其它网络库相比，libevent最大的特点就是很好的整合了I/O、timer以及signal的处理。之前我曾经在实习项目中用到过libevent，由于当时对整个libevent的运行方式不太熟悉，导致设计程序框架的时候多了很多不必要的考虑和编码，所以就在这里对libevent的核心部分进行一次剖析。<br><a id="more"></a></p>
+<h2 id="libevent的使用">libevent的使用</h2>
+<p>对于libevent来说，I/O, timer以及signal都是一个event，其内部已经封装好了对这些事件的处理，因此用户调用的时候只需要注册关心的事件以及事件的处理函数(即回调函数),然后等待事件的即可。问题的关键是libevent是怎么整合这些事件的？下面我来解释一下。</p>
+<p><strong>注：关于libevent的详细使用方法可以查阅<a href="http://www.wangafu.net/~nickm/libevent-book/" target="_blank" rel="external">官方手册</a>(貌似要番嫱。。)</strong></p>
+<h2 id="libevent的主体框架">libevent的主体框架</h2>
+<p>libevent的设计比较清晰明了，核心部分就是一个主循环，负责监控各个事件，并维护一个活跃链表(<strong>active list</strong>)，对于就绪的事件，libevent就把它插入到活跃链表中，然后按照优先级顺序分别执行活跃链表中得事件的注册回调函数。</p>
+<p>从主循环入口开始，程序要先先检测退出标识，若有则退出循环，否则继续。记录当前时间，获取timer事件中最早到期事件的时间，这里说下timer事件存储的数据结构。timer中得事件根据超时时间的大小使用小根堆得方式存储，因此插入和删除都是O(logn)的时间复杂度，而获取最早超时的事件只需要直接读取堆顶得数据即可。获取最早超时的时间和当前时间的时间差作为epoll等函数的超时时间，这就避免了因为没有I/O操作导致程序错过了执行timer事件的情况。处理完I/O事件之后，就可以及时地继续处理timer事件了。</p>
+<p>下面我们来看一下源代码：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div><div class="line">38</div><div class="line">39</div><div class="line">40</div><div class="line">41</div><div class="line">42</div><div class="line">43</div><div class="line">44</div><div class="line">45</div><div class="line">46</div><div class="line">47</div><div class="line">48</div><div class="line">49</div><div class="line">50</div><div class="line">51</div><div class="line">52</div><div class="line">53</div><div class="line">54</div><div class="line">55</div><div class="line">56</div><div class="line">57</div><div class="line">58</div><div class="line">59</div><div class="line">60</div><div class="line">61</div><div class="line">62</div><div class="line">63</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">while</span> (!done) {</div><div class="line">    base-&gt;event_continue = <span class="number">0</span>;</div><div class="line"></div><div class="line">    <span class="comment">/* Terminate the loop if we have been asked to */</span></div><div class="line">    <span class="keyword">if</span> (base-&gt;event_gotterm) {</div><div class="line">        <span class="keyword">break</span>;</div><div class="line">    }</div><div class="line"></div><div class="line">    <span class="keyword">if</span> (base-&gt;event_break) {</div><div class="line">        <span class="keyword">break</span>;</div><div class="line">    }</div><div class="line"></div><div class="line">    timeout_correct(base, &tv);</div><div class="line"></div><div class="line">    tv_p = &tv;</div><div class="line">    <span class="keyword">if</span> (!N_ACTIVE_CALLBACKS(base) && !(flags & EVLOOP_NONBLOCK)) {</div><div class="line">        timeout_next(base, &tv_p);</div><div class="line">    } <span class="keyword">else</span> {</div><div class="line">        <span class="comment">/*</span></div><div class="line">         * if we have active events, we just poll new events</div><div class="line">         * without waiting.</div><div class="line">         */</div><div class="line">        evutil_timerclear(&tv);</div><div class="line">    }</div><div class="line"></div><div class="line">    <span class="comment">/* If we have no events, we just exit */</span></div><div class="line">    <span class="keyword">if</span> (!event_haveevents(base) && !N_ACTIVE_CALLBACKS(base)) {</div><div class="line">        event_debug((<span class="string">"%s: no events registered."</span>, __func__));</div><div class="line">        retval = <span class="number">1</span>;</div><div class="line">        <span class="keyword">goto</span> done;</div><div class="line">    }</div><div class="line"></div><div class="line">    <span class="comment">/* update last old time */</span></div><div class="line">    gettime(base, &base-&gt;event_tv);</div><div class="line"></div><div class="line">    clear_time_cache(base);</div><div class="line"></div><div class="line">    <span class="comment">/* 等待I/O事件，并设定最大等待时间 */</span></div><div class="line">    res = evsel-&gt;dispatch(base, tv_p);</div><div class="line"></div><div class="line">    <span class="keyword">if</span> (res == -<span class="number">1</span>) {</div><div class="line">        event_debug((<span class="string">"%s: dispatch returned unsuccessfully."</span>,</div><div class="line">                    __func__));</div><div class="line">        retval = -<span class="number">1</span>;</div><div class="line">        <span class="keyword">goto</span> done;</div><div class="line">    }</div><div class="line"></div><div class="line">    update_time_cache(base);</div><div class="line"></div><div class="line">    <span class="comment">/* 处理到时事件 */</span></div><div class="line">    timeout_process(base);</div><div class="line"></div><div class="line">    <span class="keyword">if</span> (N_ACTIVE_CALLBACKS(base)) {</div><div class="line"></div><div class="line">        <span class="comment">/* 处理活跃链表中得事件 */</span></div><div class="line">        <span class="keyword">int</span> n = event_process_active(base);</div><div class="line">        <span class="keyword">if</span> ((flags & EVLOOP_ONCE)</div><div class="line">                && N_ACTIVE_CALLBACKS(base) == <span class="number">0</span></div><div class="line">                && n != <span class="number">0</span>)</div><div class="line">            done = <span class="number">1</span>;</div><div class="line">    } <span class="keyword">else</span> <span class="keyword">if</span> (flags & EVLOOP_NONBLOCK)</div><div class="line">        done = <span class="number">1</span>;</div><div class="line">}</div></pre></td></tr></table></figure>
+
+<p>主循环的框架如下图:</p>
+<p><img src="https://danye.me/image/142152564418.jpg" alt="libevent_loop"></p>
+<p>上文只是解释了I/O和timer的工作流程，还有signal部分尚未讲解。signal对于程序来说是完全异步的，你完全不知道注册的回调函数会在什么时候调用，那么libevent是怎么把signal整合进去的呢？这也是我一开始对libevent感到最好奇的地方。</p>
+<h2 id="libevent对signal的处理">libevent对signal的处理</h2>
+<p>细心的朋友可能已经在上面的框架图中找到了答案，没错，libevent把signal信号转换成了I/O数据。具体的方法就是使用socket pair进行数据交流。在实际操作中，生成一对socket, 其中一个为读socket，另一个为写socket，写socket得数据自然是流向读socket。在捕捉到信号之后，libevent就会找到这个写socket，向里面写入一个8位的数据，值就是信号值。当然，在用户注册了监控的信号之后，libevent就已经把读socket列入监控的范围，在下一次epoll_wait操作的时候自然就可以获取信号的相关信息。</p>
+<p>signal部分的源代码：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">static</span> <span class="keyword">void</span> __cdecl evsig_handler(<span class="keyword">int</span> sig)</div><div class="line">{</div><div class="line">    <span class="keyword">int</span> save_errno = errno;</div><div class="line"><span class="preprocessor">#ifdef WIN32</span></div><div class="line">    <span class="keyword">int</span> socket_errno = EVUTIL_SOCKET_ERROR();</div><div class="line"><span class="preprocessor">#<span class="keyword">endif</span></span></div><div class="line">    ev_uint8_t msg;</div><div class="line"></div><div class="line">    <span class="keyword">if</span> (evsig_base == NULL) {</div><div class="line">        event_warnx(</div><div class="line">                <span class="string">"%s: received signal %d, but have no base configured"</span>,</div><div class="line">                __func__, sig);</div><div class="line">        <span class="keyword">return</span>;</div><div class="line">    }</div><div class="line"></div><div class="line"><span class="preprocessor">#ifndef _EVENT_HAVE_SIGACTION</span></div><div class="line">    signal(sig, evsig_handler);</div><div class="line"><span class="preprocessor">#<span class="keyword">endif</span></span></div><div class="line"></div><div class="line">    <span class="comment">/* Wake up our notification mechanism */</span></div><div class="line">    msg = sig;</div><div class="line">    send(evsig_base_fd, (<span class="keyword">char</span>*)&msg, <span class="number">1</span>, <span class="number">0</span>);</div><div class="line">    errno = save_errno;</div><div class="line"><span class="preprocessor">#ifdef WIN32</span></div><div class="line">    EVUTIL_SET_SOCKET_ERROR(socket_errno);</div><div class="line"><span class="preprocessor">#<span class="keyword">endif</span></span></div><div class="line">}</div></pre></td></tr></table></figure>
+
+<h1 id="总结">总结</h1>
+<p>libevent的代码放置比较随意，都在根目录下，但是整体设计还是比较简洁明了的。libevent的想法是想提供一套全面跨平台的网络I/O解决方案，因此性能也没有达到极致。当然，我认为libevent在设计上最大的缺点就是使用了全局变量。因此，我更建议使用libev，从名字看就知道，两者的功能相近，设计相似(怎么有点某鹅的赶脚。。)，但是libev有着更少的bug，去掉了该死的全局变量，专注于posix，秉承unix“一个程序只做一件事，并做好它”，因此我在接下来的项目中也会采用libev。</p>
+]]></content>
+    <summary type="html">
+    <![CDATA[<p>libevent是一个事件触发(<strong>Reactor</strong>)的网络库，适用于windows、linux、bsd等多种平台，内部使用select、epoll、kqueue等系统调用管理事件机制。与其它网络库相比，libevent最大的特点就是很好的整合了I/O、timer以及signal的处理。之前我曾经在实习项目中用到过libevent，由于当时对整个libevent的运行方式不太熟悉，导致设计程序框架的时候多了很多不必要的考虑和编码，所以就在这里对libevent的核心部分进行一次剖析。<br>]]>
+    
+    </summary>
+    
+      <category term="libevent" scheme="https://danye.me/tags/libevent/"/>
+    
+      <category term="unix" scheme="https://danye.me/tags/unix/"/>
+    
+      <category term="signal" scheme="https://danye.me/tags/signal/"/>
+    
+      <category term="coding" scheme="https://danye.me/categories/coding/"/>
+    
+  </entry>
+  
+  <entry>
+    <title><![CDATA[libev回调函数的参数传递问题]]></title>
+    <link href="https://danye.me/2015/09/15/libevargs/"/>
+    <id>https://danye.me/2015/09/15/libevargs/</id>
+    <published>2015-09-15T10:29:00.000Z</published>
+    <updated>2016-01-25T09:00:38.000Z</updated>
+    <content type="html"><![CDATA[<p>libev是一个类似于libevent的事件驱动型的网络库，之前用它来做项目的时候对它由很高的期望，谁知一上手就遇到了挺无语的问题，先来看下libev的官方示例：<br><a id="more"></a></p>
+<h2 id="#Libev调用示例">#Libev调用示例</h2>
+<p>首先定义一个I/O变量：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">ev_io stdin_readable;</div></pre></td></tr></table></figure>
+
+<p>然后初始化I/O实例：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">ev_io_init (&stdin_readable, stdin_readable_cb, STDIN_FILENO, EV_READ);</div></pre></td></tr></table></figure>
+
+<p>然后开始监听：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">ev_io_start (loop, &stdin_readable);</div></pre></td></tr></table></figure>
+
+<p>最后生成处理事件的回调函数：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">static</span> <span class="keyword">void</span> stdin_readable_cb (<span class="keyword">struct</span> ev_loop *loop, ev_io *w, <span class="keyword">int</span> revents)</div></pre></td></tr></table></figure>
+
+<p>蛋不舒服的地方就是这个回调函数，三个参数都是libev留给自己调用的，想传个参数进去都没有办法，这个倒是显得libevent比较人性化，一个void*就把所有问题解决了。后来我猜想libev会不会在ev_io这个结构体里面给我留个小小的位置，于是就到libev的头文件里面找，然后就看到了这段代码:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">typedef</span> <span class="keyword">struct</span> ev_io                                                                                                               </div><div class="line">{                                                                                                                                  </div><div class="line">    EV_WATCHER_LIST (ev_io)                                                                                                                            </div><div class="line">    <span class="keyword">int</span> fd;     <span class="comment">/* ro */</span></div><div class="line">    <span class="keyword">int</span> events; <span class="comment">/* ro */</span></div><div class="line">} ev_io;</div></pre></td></tr></table></figure>
+
+<p>好吧，遇到了个宏，我跳不就行了，跳完之后发现又有宏，好吧，我再跳，然后，还有宏！受不了了，直接出大招把所有宏替换掉：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">gcc -E /usr/include/ev.h -o Eev.h</div></pre></td></tr></table></figure>
+
+<p>到Eev.h里面找到下面这段代码:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">typedef</span> <span class="keyword">struct</span> ev_io                                                                                                              </div><div class="line">{                                                                                                                                 </div><div class="line">    <span class="keyword">int</span> active; </div><div class="line">    <span class="keyword">int</span> pending; </div><div class="line">    <span class="keyword">int</span> priority; </div><div class="line">    <span class="keyword">void</span> *data; </div><div class="line">    <span class="keyword">void</span> (*cb)(<span class="keyword">struct</span> ev_loop *loop, <span class="keyword">struct</span> ev_io *w, <span class="keyword">int</span> revents); </div><div class="line">    <span class="keyword">struct</span> ev_watcher_list *next;</div><div class="line">    <span class="keyword">int</span> fd;</div><div class="line">    <span class="keyword">int</span> events;                                                                                                                     </div><div class="line">} ev_io;</div></pre></td></tr></table></figure>
+
+
+<p>不用猜就知道data变量就是我们要找的东东了。</p>
+<h2 id="#后记">#后记</h2>
+<p>后来我又去官网逛了一圈，发现下面这段话。。</p>
+<blockquote>
+<p>Each watcher has, by default, a void *data member that you can read or modify at any time: libev will completely ignore it. This can be used to associate arbitrary data with your watcher. </p>
+</blockquote>
+<p>官网还提供了一种很巧妙的方法，把ev_io结构放在自定义结构的首位，这样子ev_io实例的地址恰好就是自定义结构体实例的地址：</p>
+<blockquote>
+<p>If you need more data and don’t want to allocate memory separately and store a pointer to it in that data member, you can also “subclass” the watcher type and provide your own data:</p>
+</blockquote>
+<figure class="highlight"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">struct</span> my_io</div><div class="line">{</div><div class="line">    ev_io io;</div><div class="line">    <span class="keyword">int</span> otherfd;</div><div class="line">    <span class="keyword">void</span> *somedata;</div><div class="line">    <span class="keyword">struct</span> whatever *mostinteresting;</div><div class="line">};</div><div class="line"><span class="keyword">struct</span> my_io w;</div><div class="line">ev_io_init (&w.io, my_cb, fd, EV_READ);</div></pre></td></tr></table></figure>
+
+<blockquote>
+<p>And since your callback will be called with a pointer to the watcher, you can cast it back to your own type:</p>
+</blockquote>
+<figure class="highlight"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">static</span> <span class="keyword">void</span> my_cb (<span class="keyword">struct</span> ev_loop *loop, ev_io *w_, <span class="keyword">int</span> revents)</div><div class="line">{</div><div class="line">    <span class="keyword">struct</span> my_io *w = (<span class="keyword">struct</span> my_io *)w_;</div><div class="line">}</div></pre></td></tr></table></figure>
+
+<p>果然还是应了那句话，多看文档少作死。</p>
+]]></content>
+    <summary type="html">
+    <![CDATA[<p>libev是一个类似于libevent的事件驱动型的网络库，之前用它来做项目的时候对它由很高的期望，谁知一上手就遇到了挺无语的问题，先来看下libev的官方示例：<br>]]>
+    
+    </summary>
+    
+      <category term="libev" scheme="https://danye.me/tags/libev/"/>
+    
+      <category term="callback" scheme="https://danye.me/tags/callback/"/>
+    
+  </entry>
+  
+  <entry>
+    <title><![CDATA[利用cookie可以做的一些事情]]></title>
+    <link href="https://danye.me/2015/08/27/cookie-hack/"/>
+    <id>https://danye.me/2015/08/27/cookie-hack/</id>
+    <published>2015-08-27T15:15:00.000Z</published>
+    <updated>2016-01-27T09:45:20.000Z</updated>
+    <content type="html"><![CDATA[<p>记得还是在学Qt编程的时候，做过一个练手项目，产品是一个搜索Chrome的cookie内容的小软件。Chrome的cookie保存在用户目录的一个sqlite文件中，具体路径上网搜一下就知道了。当时比较天真，想看看cookie里面有没有明文保存的密码，结果当然是得到一堆乱码，最后就不了了之了。<br><a id="more"></a><br>直到前几天，我正在网上看一篇关于cookie的文章，忽然想起一件事情，我需要密码的原因无非是用来登录，我既然有了cookie直接发给服务器就可以了，又有什么必要了解cookie的内容？我顺手用chrome打开了微博私信查看下它的请求流程：<br><img src="https://danye.me/image/142511824063.png" alt="cookie-request-flow"></p>
+<p>貌似理论上没有什么问题，不过还是要做个试验验证一下，我准备尝试用python写个小程序模拟浏览器向微博服务器发起私信消息的页面请求。</p>
+<p>当然首先还是让我的小伙伴给我发条私信：<br><img src="https://danye.me/image/142511824132.png" alt="cookie-message"></p>
+<h2 id="具体实现">具体实现</h2>
+<p>整个实验我简单的作了个概念图：<br><img src="https://danye.me/image/142511824183.png" alt="cookie-flow"></p>
+<p>实验主要分为以下几个步骤：</p>
+<ul>
+<li>从chrome的sqlite文件中提取cookie</li>
+<li>模拟浏览器组装header</li>
+<li>向服务器发起目标页面的请求</li>
+</ul>
+<h2 id="提取chrome的cookie信息">提取chrome的cookie信息</h2>
+<p>chrome的cookie保存路径在三大操作系统Windows、Linux和OSX上都不尽相同，以linux为例，它的保存路径就是<code>～/.config/chromium/Default/Cookies</code>，我们先用sqlite3程序把这个文件载入进来看看：<br><img src="https://danye.me/image/14251182423.png" alt="cookie-tables"><br>cookie信息都保存在表<code>cookies</code>中，但是才刚开始就出现了意想不到的问题：<br><img src="https://danye.me/image/142511824283.png" alt="cookie-values-problem"></p>
+<p>表里面的值和记忆中的大部分都是一样的，唯独最重要的value一项，居然是空的，而在末尾倒是多了个<code>encrypted_value</code>項。谷歌了一下，了解到在chrome版本33之前，cookie都是直接存储的，在33+之后，谷歌开始对cookie的信息进行了加密。顺便感慨下时光飞逝，不知不觉又老了几个版本。chrome在windows上加密采用的是CryptUnprotectData函数，解密方法大家可以看<a href="http://www.ftium4.com/chrome-cookies-encrypted-value-python.html" target="_blank" rel="external">这里</a>。Linux和OSX上的加密方法相似，都采用的是AES(CBC)加密方法，了解密码学的都知道对这个数据进行解密至少需要好几个值，salt，key length，iv，password，iterations等等。不过不幸的是一位国外的网友n8henrie在浏览了chromium源码之后把这些值统统找到了，以下是他原话：</p>
+<ul>
+<li>salt is <code>b&#39;saltysalt&#39;</code></li>
+<li>key length is <code>16</code></li>
+<li><code>iv</code> is 16 bytes of space <code>b&#39; &#39; * 16</code></li>
+<li>on <code>Mac OSX</code>:<br>  <code>password</code> is in keychain under <code>Chrome Safe Storage</code><br>  I use the excellent keyring package to get the password<br>  You could also use bash: <code>security find-generic-password -w -s &quot;Chrome Safe Storage&quot;</code><br>  number of iterations is <code>1003</code></li>
+<li>on Linux:<br>  password is <code>peanuts</code><br>  number of iterations is <code>1</code></li>
+</ul>
+<p>顺便贴出他给出的源代码(可能是原作者的失误，在clean函数中忘记调用了ord函数，特此补上)：</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div></pre></td><td class="code"><pre><div class="line"><span class="comment">#! /usr/bin/env python3</span></div><div class="line"></div><div class="line"><span class="keyword">from</span> Crypto.Cipher <span class="keyword">import</span> AES</div><div class="line"><span class="keyword">from</span> Crypto.Protocol.KDF <span class="keyword">import</span> PBKDF2</div><div class="line"></div><div class="line"><span class="comment"># Function to get rid of padding</span></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">clean</span><span class="params">(x)</span>:</span> </div><div class="line">    <span class="keyword">return</span> x[:-ord(x[-<span class="number">1</span>])].decode(<span class="string">'utf8'</span>)</div><div class="line"></div><div class="line"><span class="comment"># replace with your encrypted_value from sqlite3</span></div><div class="line">encrypted_value = ENCRYPTED_VALUE </div><div class="line"></div><div class="line"><span class="comment"># Trim off the 'v10' that Chrome/ium prepends</span></div><div class="line">encrypted_value = encrypted_value[<span class="number">3</span>:]</div><div class="line"></div><div class="line"><span class="comment"># Default values used by both Chrome and Chromium in OSX and Linux</span></div><div class="line">salt = <span class="string">b'saltysalt'</span></div><div class="line">iv = <span class="string">b' '</span> * <span class="number">16</span></div><div class="line">length = <span class="number">16</span></div><div class="line"></div><div class="line"><span class="comment"># On Mac, replace MY_PASS with your password from Keychain</span></div><div class="line"><span class="comment"># On Linux, replace MY_PASS with 'peanuts'</span></div><div class="line">my_pass = MY_PASS</div><div class="line">my_pass = my_pass.encode(<span class="string">'utf8'</span>)</div><div class="line"></div><div class="line"><span class="comment"># 1003 on Mac, 1 on Linux</span></div><div class="line">iterations = <span class="number">1003</span></div><div class="line"></div><div class="line">key = PBKDF2(my_pass, salt, length, iterations)</div><div class="line">cipher = AES.new(key, AES.MODE_CBC, IV=iv)</div><div class="line"></div><div class="line">decrypted = cipher.decrypt(encrypted_value)</div><div class="line">print(clean(decrypted))</div></pre></td></tr></table></figure>
+
+<p>我稍微改了下源代码，对上图header里的cookie的第一項尝试进行解密：</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">from</span> Crypto.Cipher <span class="keyword">import</span> AES</div><div class="line"><span class="keyword">from</span> Crypto.Protocol.KDF <span class="keyword">import</span> PBKDF2</div><div class="line"></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">clean</span><span class="params">(x)</span>:</span> </div><div class="line">    <span class="keyword">return</span> x[:-ord(x[-<span class="number">1</span>])].decode(<span class="string">'utf8'</span>)</div><div class="line"></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">decrypt</span><span class="params">(encrypted_value)</span>:</span></div><div class="line">    encrypted_value = encrypted_value[<span class="number">3</span>:]</div><div class="line"></div><div class="line">    salt = <span class="string">b'saltysalt'</span></div><div class="line">    iv = <span class="string">b' '</span> * <span class="number">16</span></div><div class="line">    length = <span class="number">16</span></div><div class="line"></div><div class="line">    my_pass = <span class="string">'peanuts'</span></div><div class="line">    my_pass = my_pass.encode(<span class="string">'utf8'</span>)</div><div class="line"></div><div class="line">    iterations = <span class="number">1</span></div><div class="line"></div><div class="line">    key = PBKDF2(my_pass, salt, length, iterations)</div><div class="line">    cipher = AES.new(key, AES.MODE_CBC, IV=iv)</div><div class="line">    decrypted = cipher.decrypt(encrypted_value)</div><div class="line">    </div><div class="line">    <span class="keyword">return</span> clean(decrypted)</div><div class="line"></div><div class="line">cx = sqlite3.connect(os.path.expandvars(<span class="string">'$HOME'</span>) + <span class="string">'/.config/chromium/Default/Cookies'</span>)</div><div class="line">cu = cx.cursor()</div><div class="line"></div><div class="line">cu.execute(<span class="string">"select * from cookies where host_key = '.weibo.com' and name = 'SINAGLOBAL'"</span>)</div><div class="line">    </div><div class="line">res = cu.fetchone()</div><div class="line">    </div><div class="line"><span class="keyword">print</span> decrypt(res[len(res)-<span class="number">1</span>])</div></pre></td></tr></table></figure>
+
+<p>结果显示n8henrie给出的值确实是正确的，解密成功。<br><img src="https://danye.me/image/142511824335.png" alt="cookie-value-chrome"><br><img src="https://danye.me/image/142511824386.png" alt="cookie-chomre"></p>
+<p>这个值我们不知道有什么意义，因为本来就不需要，直接把它发给服务器就好，服务器自己知道怎么解密的。</p>
+<p>cookie值解密出来之后，感觉就像是突然变成了宿管阿姨，手里握着整栋宿舍的钥匙。</p>
+<h2 id="组装header">组装header</h2>
+<p>组装header这里比较容易了，基本上照着上面截下来的Chrome的header照抄就好了，不过要注意的是记得把<code>Accept-Encoding:gzip，deflate，sdch</code>这一项去掉，不然返回的数据是经过压缩的，最后再加上解密出来的cookie，一个完整的header就出来了。</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">import</span> sqlite3</div><div class="line"><span class="keyword">import</span> urllib2</div><div class="line"><span class="keyword">import</span> os</div><div class="line"></div><div class="line">cx = sqlite3.connect(os.path.expandvars(<span class="string">'$HOME'</span>) + <span class="string">'/.config/chromium/Default/Cookies'</span>)</div><div class="line">cu = cx.cursor()</div><div class="line">cu.execute(<span class="string">"select * from cookies where host_key = '.weibo.com'"</span>)</div><div class="line"></div><div class="line">cookies = <span class="string">''</span></div><div class="line"></div><div class="line"><span class="keyword">for</span> res <span class="keyword">in</span> cu.fetchall(): </div><div class="line">    cookies += res[<span class="number">2</span>] + <span class="string">'='</span> + decrypt(res[len(res)-<span class="number">1</span>]) + <span class="string">'; '</span></div><div class="line"></div><div class="line">url = <span class="string">'http://weibo.com/messages'</span></div><div class="line"></div><div class="line">header = {</div><div class="line">        <span class="string">'Accept'</span>: <span class="string">'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'</span>,</div><div class="line">        #<span class="string">'Accept-Encoding'</span>: <span class="string">'gzip, deflate, sdch'</span>,</div><div class="line">        <span class="string">'Accept-Language'</span>: <span class="string">'zh-CN,zh;q=0.8,en;q=0.6,ja;q=0.4,zh-TW;q=0.2'</span>,</div><div class="line">        <span class="string">'Cache-Control'</span>: <span class="string">'max-age=0'</span>,</div><div class="line">        <span class="string">'Connection'</span>: <span class="string">'keep-alive'</span>,</div><div class="line">        <span class="string">'Host'</span>: <span class="string">'weibo.com'</span>,</div><div class="line">        <span class="string">'Cookie'</span>: cookies,</div><div class="line">        <span class="string">'User-Agent'</span>: <span class="string">'Mozilla/5.0 (X11; Linux i686) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/40.0.2214.111 Chrome/40.0.2214.111 Safari/537.36'</span></div><div class="line">}</div><div class="line">request = urllib2.Request(url, headers=header)</div></pre></td></tr></table></figure>
+
+<h2 id="发送请求">发送请求</h2>
+<p>最后一步发送请求，把返回的数据打开看一下，私信消息已经在里面了。<br><img src="https://danye.me/image/142511824443.png" alt="cookie-msg-decode"></p>
+<h2 id="结语">结语</h2>
+<p>没想到整个过程还算是比较顺利的，而且还是在linux平台。随后我又在windows和OSX上进行了试验，windows的解密要更简单一点，而在OSX上获取<code>Chrome Safe Storage</code>的<code>password</code>的时候系统提醒需要获取授权，也就是说从目前来看只有苹果系挡住了这次攻击。不得不说cookie确实给我们带来了太多的便利，但是与此同时也牺牲了太多的安全性，网络发展到今天很多事情已经超出可控的范围，尤其是在中国这种软件氛围，谁知道各大软件产商有什么做不出来的，想要保护好自己，只能靠自己平时多长点心眼了。</p>
+<h2 id="References">References</h2>
+<ul>
+<li><a href="http://stackoverflow.com/questions/23153159/decrypting-chrome-iums-cookies/23727331#23727331" target="_blank" rel="external">http://stackoverflow.com/questions/23153159/decrypting-chrome-iums-cookies/23727331#23727331</a></li>
+<li><a href="http://n8henrie.com/2014/05/decrypt-chrome-cookies-with-python/" target="_blank" rel="external">http://n8henrie.com/2014/05/decrypt-chrome-cookies-with-python/</a></li>
+<li><a href="http://www.ftium4.com/chrome-cookies-encrypted-value-python.html" target="_blank" rel="external">http://www.ftium4.com/chrome-cookies-encrypted-value-python.html</a></li>
+</ul>
+<h2 id="转载请注明">转载请注明</h2>
+<p>原文地址： <a href="https://danye.me/2015/02/26/cookie-hack/" target="_blank" rel="external">https://danye.me/2015/02/26/cookie-hack/</a></p>
+]]></content>
+    <summary type="html">
+    <![CDATA[<p>记得还是在学Qt编程的时候，做过一个练手项目，产品是一个搜索Chrome的cookie内容的小软件。Chrome的cookie保存在用户目录的一个sqlite文件中，具体路径上网搜一下就知道了。当时比较天真，想看看cookie里面有没有明文保存的密码，结果当然是得到一堆乱码，最后就不了了之了。<br>]]>
+    
+    </summary>
+    
+      <category term="http" scheme="https://danye.me/tags/http/"/>
+    
+      <category term="cookie" scheme="https://danye.me/tags/cookie/"/>
+    
+      <category term="python" scheme="https://danye.me/tags/python/"/>
+    
+      <category term="aes" scheme="https://danye.me/tags/aes/"/>
+    
+      <category term="chrome" scheme="https://danye.me/tags/chrome/"/>
+    
+      <category term="coding" scheme="https://danye.me/categories/coding/"/>
+    
+  </entry>
+  
+  <entry>
+    <title><![CDATA[Linux中程序的CPU亲和性(affinity)]]></title>
+    <link href="https://danye.me/2015/08/15/linux-cpu-affinity/"/>
+    <id>https://danye.me/2015/08/15/linux-cpu-affinity/</id>
+    <published>2015-08-15T06:26:00.000Z</published>
+    <updated>2016-01-25T08:43:31.000Z</updated>
+    <content type="html"><![CDATA[<p>之前在nginx的配置文件中看到有一个配置选项<code>worker_cpu_affinity</code>用来配置nginx worker process的cpu亲和性，cpu亲和性就是进程或者线程在某个给定的cpu上尽量长时间地运行而不被迁移到其它处理器上的特性。这个没什么问题，我好奇的是这东西到底有多大作用。上网看了下相关的文档，发现设置CPU亲和性的API也就两三种，分别是针对线程和进程的，这里就用线程来测试一下。<br><a id="more"></a></p>
+<h2 id="pthread_cpu_affinity">pthread cpu affinity</h2>
+<p>线程中设置cpu亲和性的api和变量主要有以下几个：</p>
+<ul>
+<li>cpu_set_t： cpu的掩码集合</li>
+<li>CPU_ZERO： cpu掩码清零</li>
+<li>CPU_SET： 设置cpu掩码</li>
+<li>pthread_setaffinity_np： 设置线程亲和性，成功返回0。</li>
+<li>pthread_getaffinity_np： 查看亲和性设置结果，成功返回0。</li>
+</ul>
+<p>注：这些api仅在FreeBSD和linux下可用，且在使用前须在所有头文件的前面定义宏<code>_GNU_SOURCE</code>。</p>
+<p>利用这几个api，我写了个小程序开启了和cpu核心数相等的线程数，分别在默认情况下和设置了cpu亲和性的情况下进行等量的计算，最后分别计算出它们的消耗时间。</p>
+<p>经过多次的测试，两组数据相当接近，差距基本在误差范围内，不过设置了cpu亲和性的一组线程消耗的时间总是要多一点。</p>
+<p>需要查看代码的童鞋可以点<a href="https://github.com/mafagan/blog-code/blob/master/code/thread_cpu.c" target="_blank" rel="external">这里</a>。</p>
+<h2 id="nginx的cpu_affinity测试">nginx的cpu affinity测试</h2>
+<p>既然自己的测试结果不太给力，那还是拿nginx来测吧。我是用的是nginx的默认配置文件，只是对worker<br>process的数量还有worker_cpu_affinity配置项进行了改动，然后用apache的ab程序来进行请求测试:</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">ab -n <span class="number">50000</span> -<span class="built_in">c</span> <span class="number">500</span> http:<span class="comment">//10.211.55.4/</span></div></pre></td></tr></table></figure>
+
+<p>测试的结果总体上和我写得程序的测试结果相近，两组配置程序的表现差距都在误差范围内，但是数值上设置了cpu亲和性的一组总是要偏低。</p>
+<h2 id="总结">总结</h2>
+<p>后来我又在网上看了很多的相关资料，发现linux的内核进程调度器天生具有被称为软cpu亲和性的特性，这意味着进程通常不会在处理器之间频繁迁移。并且，设置cpu亲和性和提高性能两者并没有直接的关系，它只能尽可能地提高cpu的利用率，就算是提高cpu利用率这一点也是无法保证的。也许就像一位linux内核开发者说的：“猜测内核的行为是一件非常困难的事情。”</p>
+<p>而根据网上的优化案例，nginx的cpu亲和性设置确实在某些时候和某些环境下能够提升程序的性能，程序的优化很多时候也并不仅仅只是改一个参数那么简单，还是要在具体的硬件和软件环境下进行测试才能够找出最优的方案。</p>
+]]></content>
+    <summary type="html">
+    <![CDATA[<p>之前在nginx的配置文件中看到有一个配置选项<code>worker_cpu_affinity</code>用来配置nginx worker process的cpu亲和性，cpu亲和性就是进程或者线程在某个给定的cpu上尽量长时间地运行而不被迁移到其它处理器上的特性。这个没什么问题，我好奇的是这东西到底有多大作用。上网看了下相关的文档，发现设置CPU亲和性的API也就两三种，分别是针对线程和进程的，这里就用线程来测试一下。<br>]]>
+    
+    </summary>
+    
+      <category term="linux" scheme="https://danye.me/tags/linux/"/>
+    
+      <category term="cpu" scheme="https://danye.me/tags/cpu/"/>
+    
+      <category term="affinity" scheme="https://danye.me/tags/affinity/"/>
+    
+      <category term="nginx" scheme="https://danye.me/tags/nginx/"/>
+    
+      <category term="coding" scheme="https://danye.me/categories/coding/"/>
+    
+  </entry>
+  
+  <entry>
+    <title><![CDATA[nginx中的accept-mutex源码分析(二)]]></title>
+    <link href="https://danye.me/2015/08/05/nginx-mutex-analysis-2/"/>
+    <id>https://danye.me/2015/08/05/nginx-mutex-analysis-2/</id>
+    <published>2015-08-05T14:24:00.000Z</published>
+    <updated>2016-01-27T09:46:37.000Z</updated>
+    <content type="html"><![CDATA[<p>在上篇文章里我们了解了nginx使用accept-mutex解决『惊群』问题的方法，其实在nginx的架构中，accept-mutex还起到了另外一个作用，负载均衡。</p>
+<h2 id="worker_process的负载均衡">worker process的负载均衡</h2>
+<p>在nginx抢夺accept-mutex之前有一个判断条件</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">if</span> (ngx_accept_disabled &gt; <span class="number">0</span>) {</div><div class="line">    ngx_accept_disabled--;                </div><div class="line">} <span class="keyword">else</span> {<span class="keyword">...</span>}</div></pre></td></tr></table></figure>
+
+<p>很显然，如果ngx_use_accept_mutex为正，这个worker会放弃这一次抢夺mutex的机会。而在每次抢夺mutex之前(或者说抢夺mutex之后)，worker都会对ngx_accept_disabled这个变量的值进行计算，算法如下</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line">ngx_accept_disabled = ngx_cycle-&gt;connection_n / <span class="number">8</span></div><div class="line">                        - ngx_cycle-&gt;free_connection_n;</div></pre></td></tr></table></figure>
+
+<p>connection_n表示的是最大连接数，free_connection_n表示的就是剩余连接数，因此当剩余连接少于总连接数的八分之一，也就是已用连接数多于总连接数的八分之七，worker就会放弃这一次抢夺mutex的机会。那如果所有的worker的connection都超过八分之七哪怎么办？会不会导致整个nginx停止工作？这个你可以放心，注意代码里有这么一行<code>ngx_accept_disabled--;</code>，很明显worker不会一直放弃抢夺mutex的机会，因为每放弃一次，该变量的值都会减少一次，直至小于0.<br>注：最大连接数在nginx中是一个可配置选项，名为worker connections，下面是官方的解释，</p>
+<blockquote>
+<p>Sets the maximum number of simultaneous connections that can be opened<br>by a worker process.</p>
+</blockquote>
+<h2 id="结语">结语</h2>
+<p>之前对这一部分的代码一直很好奇很期待，现在了解了之后倒是觉得有一点点失望。不过，这里的负载均衡指的是nginx作为服务器时使用的平衡各个worker负载的方法，至于我们用得更多的nginx作为反向代理服务器使用的负载均衡是完全不同的方法，有空再研究下里面的代码。</p>
+]]></content>
+    <summary type="html">
+    <![CDATA[<p>在上篇文章里我们了解了nginx使用accept-mutex解决『惊群』问题的方法，其实在nginx的架构中，accept-mutex还起到了另外一个作用，负载均衡。</p>
+<h2 id="worker_process的负载均衡">worker process的负载均衡<]]>
+    </summary>
+    
+      <category term="nginx" scheme="https://danye.me/tags/nginx/"/>
+    
+      <category term="mutex" scheme="https://danye.me/tags/mutex/"/>
+    
+      <category term="algorithm" scheme="https://danye.me/tags/algorithm/"/>
+    
+      <category term="coding" scheme="https://danye.me/categories/coding/"/>
+    
+  </entry>
+  
+  <entry>
+    <title><![CDATA[nginx中的accept-mutex源码分析(一)]]></title>
+    <link href="https://danye.me/2015/07/31/nginx-mutex-analysis/"/>
+    <id>https://danye.me/2015/07/31/nginx-mutex-analysis/</id>
+    <published>2015-07-31T06:26:00.000Z</published>
+    <updated>2016-01-27T09:37:50.000Z</updated>
+    <content type="html"><![CDATA[<p>最近的项目遇到了些麻烦，于是就到各家项目的源码里东逛逛西逛逛，看看有没有什么值得借鉴(chao)的东西，一来二去总算是找(chao)到了一些有用的东西，同时还无意间了解了下nginx的源码结构，其中nginx对于accept的处理倒是让我有种别开生面的赶脚(菜鸟本质暴露了…)，所以这里就写下来做个小小的记录。<br><a id="more"></a></p>
+<h2 id="nginx架构">nginx架构</h2>
+<p>nginx是典型的多进程模式，其中一个是master进程，其它是worker进程，顾名思义，master就是负责管理的，管理各个worker进程，worker进程自然就是干活的，具体点就是处理数据、处理请求的。</p>
+<p>nginx所有的worker进程都会监听端口，实现方法比较简单，首先让父进程监听80端口，获得fd，fork之后子进程自然会继承监听fd。细心的童鞋会注意到，这里面至少有两个问题，一个是当请求过来的时候哪个进程能获得这个请求的处理权，另一个问题就是如何做到负载均衡。</p>
+<h2 id="惊群">惊群</h2>
+<p>第一个问题涉及到一个比较经典的现象，名叫『惊群』。有时候我们会使用多个进程对一个fd进行accept，在早期的linux版本中，请求到来的时候所有的accept都会惊醒，其中一个返回成功，其它都会返回accept失败，这就是所谓的『惊群』现象。不过linux-2.6之后的版本中，这个问题得到了修复，也就是请求到达的时候，只有可以成功accept的那个进程会惊醒，而其它会继续阻塞。</p>
+<p>这个貌似解决了问题，其实问题还没有结束。在现代的服务器设计中，很少还会用一个进程或者一个线程进行accept操作，更多地是使用多路I/O复用技术，这里以epoll为例，当把listen fd加入到epoll监听中，请求到来的时候依旧会惊醒所有的进程，真是蛋疼…好吧，我们来看看nginx的应对惊群的经典解决方案。</p>
+<h2 id="nginx的accept-mutex">nginx的accept-mutex</h2>
+<p>nginx在监听listen fd(或者说把listen fd加入到epoll中)之前首先需要去竞争一把锁，只有在获得了这把锁之后才对listen fd进行监听。获取锁是马上返回的，当获取失败的时候，nginx会结合timer事件设置最大等待时间，然后再去获取监听锁。如果进程获取到监听锁，则…还是直接看代码吧，套用linus的名言：</p>
+<blockquote>
+<p>Read the fucking source code.</p>
+</blockquote>
+<p>翻译成中文就是，方便的话请阅读源代码^_^.</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div><div class="line">38</div><div class="line">39</div><div class="line">40</div><div class="line">41</div><div class="line">42</div><div class="line">43</div><div class="line">44</div><div class="line">45</div><div class="line">46</div><div class="line">47</div><div class="line">48</div><div class="line">49</div><div class="line">50</div><div class="line">51</div><div class="line">52</div><div class="line">53</div><div class="line">54</div><div class="line">55</div><div class="line">56</div><div class="line">57</div><div class="line">58</div><div class="line">59</div><div class="line">60</div><div class="line">61</div><div class="line">62</div><div class="line">63</div><div class="line">64</div><div class="line">65</div><div class="line">66</div><div class="line">67</div><div class="line">68</div><div class="line">69</div><div class="line">70</div><div class="line">71</div><div class="line">72</div><div class="line">73</div></pre></td><td class="code"><pre><div class="line">void</div><div class="line">ngx_process_events_and_timers(ngx_cycle_t *cycle)</div><div class="line">{</div><div class="line">    ngx_uint_t  flags;</div><div class="line">    ngx_msec_t  timer, delta;</div><div class="line"></div><div class="line">    <span class="keyword">if</span> (ngx_timer_resolution) {</div><div class="line">        <span class="variable">timer =</span> NGX_TIMER_INFINITE;</div><div class="line">        <span class="variable">flags =</span> <span class="number">0</span>;</div><div class="line"></div><div class="line">    } <span class="keyword">else</span> {</div><div class="line">        <span class="variable">timer =</span> ngx_event_find_timer();</div><div class="line">        <span class="variable">flags =</span> NGX_UPDATE_TIME;</div><div class="line"></div><div class="line"><span class="comment">#if (NGX_THREADS)</span></div><div class="line"></div><div class="line">    <span class="keyword">if</span> (<span class="variable">timer =</span>= NGX_TIMER_INFINITE || timer &gt; <span class="number">500</span>) {</div><div class="line">        <span class="variable">timer =</span> <span class="number">500</span>;</div><div class="line">    }</div><div class="line"></div><div class="line"><span class="comment">#endif</span></div><div class="line">    }</div><div class="line">	<span class="comment">/* 检测是否启用mutex，多worker进程下一般都会启用 */</span></div><div class="line">    <span class="keyword">if</span> (ngx_use_accept_mutex) {</div><div class="line">        <span class="keyword">if</span> (ngx_accept_disabled &gt; <span class="number">0</span>) {</div><div class="line">            ngx_accept_disabled--;</div><div class="line"></div><div class="line">        } <span class="keyword">else</span> {</div><div class="line">            <span class="keyword">if</span> (ngx_trylock_accept_mutex(cycle) == NGX_ERROR) {</div><div class="line">            <span class="comment">/* 尝试获取锁，不管成功还是失败都会立即返回 */</span></div><div class="line">                return;</div><div class="line">            }</div><div class="line"></div><div class="line">            <span class="keyword">if</span> (ngx_accept_mutex_held) {</div><div class="line">                <span class="comment">/* 获取到锁之后添加flag */</span></div><div class="line">                flags |= NGX_POST_EVENTS;</div><div class="line"></div><div class="line">            } <span class="keyword">else</span> {</div><div class="line">                <span class="comment">/* 如果获取不到锁需要结合timer事件设置下一次抢锁的时间 */</span></div><div class="line">                <span class="keyword">if</span> (<span class="variable">timer =</span>= NGX_TIMER_INFINITE</div><div class="line">                    || timer &gt; ngx_accept_mutex_delay)</div><div class="line">                {</div><div class="line">                    <span class="variable">timer =</span> ngx_accept_mutex_delay;</div><div class="line">                }</div><div class="line">            }</div><div class="line">        }</div><div class="line">    }</div><div class="line"></div><div class="line">    <span class="variable">delta =</span> ngx_current_msec;</div><div class="line">	</div><div class="line">	<span class="comment">/* 开始epoll收集处理事件 */</span></div><div class="line">    (void) ngx_process_events(cycle, timer, flags);</div><div class="line">	</div><div class="line">	<span class="comment">/* delta就是epoll_wait消耗掉的时间 */</span></div><div class="line">    <span class="variable">delta =</span> ngx_current_msec - delta;</div><div class="line">	</div><div class="line">    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle-&gt;log, <span class="number">0</span>,</div><div class="line">                   <span class="string">"timer delta: %M"</span>, delta);</div><div class="line">	<span class="comment">/* accept事件已经被加入到单独的任务队列并会被优先处理 */</span></div><div class="line">    ngx_event_process_posted(cycle, &ngx_posted_accept_events);</div><div class="line">	</div><div class="line">	<span class="comment">/* accept事件处理完之后先释放accept锁，因为其它事件的处理可能耗时较长，不要占着茅坑不睡觉 */</span></div><div class="line">    <span class="keyword">if</span> (ngx_accept_mutex_held) {</div><div class="line">        ngx_shmtx_unlock(&ngx_accept_mutex);</div><div class="line">    }</div><div class="line"></div><div class="line">    <span class="keyword">if</span> (delta) {</div><div class="line">        ngx_event_expire_timers();</div><div class="line">    }</div><div class="line">	</div><div class="line">	<span class="comment">/* 之后可以放心处理其它事件了 */</span></div><div class="line">    ngx_event_process_posted(cycle, &ngx_posted_events);</div><div class="line">}</div></pre></td></tr></table></figure>
+
+<h2 id="结语">结语</h2>
+<p>这里只是解释了nginx惊群问题的解决，负载均衡部分留到下文分解。</p>
+]]></content>
+    <summary type="html">
+    <![CDATA[<p>最近的项目遇到了些麻烦，于是就到各家项目的源码里东逛逛西逛逛，看看有没有什么值得借鉴(chao)的东西，一来二去总算是找(chao)到了一些有用的东西，同时还无意间了解了下nginx的源码结构，其中nginx对于accept的处理倒是让我有种别开生面的赶脚(菜鸟本质暴露了…)，所以这里就写下来做个小小的记录。<br>]]>
+    
+    </summary>
+    
+      <category term="nginx" scheme="https://danye.me/tags/nginx/"/>
+    
+      <category term="mutex" scheme="https://danye.me/tags/mutex/"/>
+    
+      <category term="coding" scheme="https://danye.me/categories/coding/"/>
+    
+  </entry>
+  
+  <entry>
+    <title><![CDATA[《STL源码剖析》读书笔记(二)——typename与嵌套依赖类型]]></title>
+    <link href="https://danye.me/2015/04/27/nested-type/"/>
+    <id>https://danye.me/2015/04/27/nested-type/</id>
+    <published>2015-04-26T16:56:00.000Z</published>
+    <updated>2016-01-25T08:42:55.000Z</updated>
+    <content type="html"><![CDATA[<p>在C++泛型编程中，template中的参数主要有两种声明方法，一种是typename，另一种是class。在这种情况下，typename和class是没有区别的，也就是说是使用typename还是class可以根据自己的喜好选择。</p>
+<h2 id="typename在嵌套类型中的使用">typename在嵌套类型中的使用</h2>
+<p>typename在template中的作用可能是最为大家所熟知的，但是反倒是typename最主要的作用大家(其实就是我，不然也不会有这篇笔记啦。。)用得比较少，先看一下下面这段代码</p>
+<figure class="highlight C++"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">template</span> &lt;<span class="keyword">class</span> Parm&gt;</div><div class="line">Parm minus( Parm* instance )</div><div class="line">{</div><div class="line">    Parm::name * p; <span class="comment">// 这是一个指针声明还是乘法?</span></div><div class="line">}</div></pre></td></tr></table></figure>
+
+<p>假设传入instance的类型如下：</p>
+<figure class="highlight C++"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">struct</span> Real</div><div class="line">{</div><div class="line">    <span class="keyword">typedef</span> <span class="keyword">int</span> name;</div><div class="line">    ...</div><div class="line">};</div></pre></td></tr></table></figure>
+
+<p>像这种情况，name会被编译器视作Parm类的静态变量，但是很明显，<code>Parm::name *p</code>的本意是想声明一个指针的，这时候就需要在前面加一个<code>typename</code>，这样编译器就知道<code>Parm::name</code>是一个类型了。</p>
+<figure class="highlight C++"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">template</span> &lt;<span class="keyword">class</span> Parm&gt;</div><div class="line">Parm minus( Parm* instance )</div><div class="line">{</div><div class="line">    <span class="keyword">typename</span> Parm::name * p; <span class="comment">// 这是一个指针声明</span></div><div class="line">}</div></pre></td></tr></table></figure>
+
+]]></content>
+    <summary type="html">
+    <![CDATA[<p>在C++泛型编程中，template中的参数主要有两种声明方法，一种是typename，另一种是class。在这种情况下，typename和class是没有区别的，也就是说是使用typename还是class可以根据自己的喜好选择。</p>
+<h2 id="typename]]>
+    </summary>
+    
+      <category term="C++" scheme="https://danye.me/tags/C/"/>
+    
+      <category term="STL" scheme="https://danye.me/tags/STL/"/>
+    
+      <category term="nested type" scheme="https://danye.me/tags/nested-type/"/>
+    
+      <category term="coding" scheme="https://danye.me/categories/coding/"/>
+    
+  </entry>
+  
+  <entry>
+    <title><![CDATA[《STL源码剖析》读书笔记(一)——迭代器的相应类型]]></title>
+    <link href="https://danye.me/2015/04/16/associated-types/"/>
+    <id>https://danye.me/2015/04/16/associated-types/</id>
+    <published>2015-04-16T10:53:00.000Z</published>
+    <updated>2016-01-25T08:42:30.000Z</updated>
+    <content type="html"><![CDATA[<p>迭代器是一种智能指针，主要完成的工作无非就是提取它所指向的内容和成员的访问。</p>
+<h2 id="迭代器的相应类型(台译作『型别』)">迭代器的相应类型(台译作『型别』)</h2>
+<p>问题：现在有一个迭代器，在算法的实现中需要获取它的相应类型，也就是迭代器所指向对象的类型，应该怎么做？</p>
+<p>其中的一种解决方法就是使用function template的参数推导(argument deducation)机制。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div></pre></td><td class="code"><pre><div class="line"></div><div class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> T&gt;</div><div class="line"><span class="keyword">void</span> real_func(T instance)</div><div class="line">{</div><div class="line">        <span class="built_in">cout</span> &lt;&lt; instance &lt;&lt; endl;</div><div class="line"></div><div class="line">}</div><div class="line"></div><div class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> T&gt;</div><div class="line"><span class="keyword">void</span> func(T iter)</div><div class="line">{</div><div class="line">        real_func(*iter);</div><div class="line"></div><div class="line">}</div><div class="line"></div><div class="line"><span class="keyword">int</span> main()</div><div class="line">{</div><div class="line">    <span class="keyword">int</span> a = <span class="number">2</span>;</div><div class="line">    func(&a);</div><div class="line">}</div></pre></td></tr></table></figure>
+
+<p>这种方法可以解决大多数应用的情况，巧妙地获取了迭代器所指向对象的类型。</p>
+]]></content>
+    <summary type="html">
+    <![CDATA[<p>迭代器是一种智能指针，主要完成的工作无非就是提取它所指向的内容和成员的访问。</p>
+<h2 id="迭代器的相应类型(台译作『型别』)">迭代器的相应类型(台译作『型别』)</h2>
+<p>问题：现在有一个迭代器，在算法的实现中需要获取它的相应类型，也就是迭代器所指向对象]]>
+    </summary>
+    
+      <category term="C++" scheme="https://danye.me/tags/C/"/>
+    
+      <category term="STL" scheme="https://danye.me/tags/STL/"/>
+    
+      <category term="iterator" scheme="https://danye.me/tags/iterator/"/>
+    
+      <category term="coding" scheme="https://danye.me/categories/coding/"/>
+    
+  </entry>
+  
+  <entry>
+    <title><![CDATA[leetcode pow(x,n)解题报告]]></title>
+    <link href="https://danye.me/2015/03/08/leetcode-pow/"/>
+    <id>https://danye.me/2015/03/08/leetcode-pow/</id>
+    <published>2015-03-07T17:52:00.000Z</published>
+    <updated>2016-01-27T09:49:20.000Z</updated>
+    <content type="html"><![CDATA[<p>题目很简洁，就是实现pow(x,n)。</p>
+<h2 id="解题思路">解题思路</h2>
+<p>直接乘n遍x，时间复杂度O(n)，超时。</p>
+<p>二分法，这个比较容易想到，网上也有不少类似的解法，时间复杂度O(logn)，可以通过。</p>
+<p>还有一种方法：</p>
+<p>对比下这条式子:</p>
+<p>用二进制角度来看n，第i个比特位上的1等价于x^(2^i)，因此可以先打表，保存<code>x^(2^0)...x(2^(sizeof(int)*8))</code>的值，然后遍历n的每个比特位进行计算，时间复杂度O(1)。</p>
+<p>注意事项：</p>
+<ul>
+<li>n小于0的情况。</li>
+<li>n为int可表示的最小值的情况。</li>
+</ul>
+<p>Accept代码如下：</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">class</span> Solution {</div><div class="line"><span class="keyword">public</span>:</div><div class="line">    <span class="keyword">double</span> <span class="built_in">pow</span>(<span class="keyword">double</span> x, <span class="keyword">int</span> n) {</div><div class="line">        <span class="keyword">bool</span> flag = <span class="keyword">false</span>;</div><div class="line">        </div><div class="line">        <span class="keyword">if</span>(n==<span class="number">0</span>) <span class="keyword">return</span> <span class="number">1</span>;</div><div class="line">        </div><div class="line">        <span class="keyword">if</span>(n&lt;<span class="number">0</span>){</div><div class="line">            x = <span class="number">1</span>/x;</div><div class="line">            n = -<span class="number">1</span> * (n + <span class="number">1</span>); <span class="comment">//INT_MIN不可以直接乘-1</span></div><div class="line">            flag = <span class="keyword">true</span>;</div><div class="line">        }</div><div class="line">        </div><div class="line">        <span class="stl_container"><span class="built_in">vector</span>&lt;<span class="keyword">double</span>&gt;</span> res;</div><div class="line">        <span class="keyword">double</span> tmp = x;</div><div class="line">        </div><div class="line">        res.push_back(<span class="number">1</span>);</div><div class="line">        res.push_back(x);</div><div class="line">        </div><div class="line">        <span class="keyword">for</span>(<span class="keyword">int</span> i=<span class="number">2</span>; i&lt;<span class="keyword">sizeof</span>(<span class="keyword">int</span>)*<span class="number">8</span>; i++) res.push_back(res[i-<span class="number">1</span>]*res[i-<span class="number">1</span>]);</div><div class="line"></div><div class="line">        <span class="keyword">int</span> bits = n;</div><div class="line">        <span class="keyword">double</span> retvalue = <span class="number">1</span>;</div><div class="line"></div><div class="line">        <span class="keyword">for</span>(<span class="keyword">int</span> i=<span class="number">0</span>; i&lt;<span class="keyword">sizeof</span>(<span class="keyword">int</span>)*<span class="number">8</span>; i++){</div><div class="line">            <span class="keyword">if</span>((bits&<span class="number">0x01</span>) != <span class="number">0</span>) retvalue *= res[i+<span class="number">1</span>];</div><div class="line">            bits = bits &gt;&gt; <span class="number">1</span>;</div><div class="line">        }</div><div class="line"></div><div class="line">        <span class="keyword">if</span>(flag) <span class="keyword">return</span> retvalue*x;</div><div class="line">        <span class="keyword">else</span> <span class="keyword">return</span> retvalue;</div><div class="line">    }</div><div class="line">};</div></pre></td></tr></table></figure>
+
+<p>差点忘了，三八妇女节快乐^_^！</p>
+]]></content>
+    <summary type="html">
+    <![CDATA[<p>题目很简洁，就是实现pow(x,n)。</p>
+<h2 id="解题思路">解题思路</h2>
+<p>直接乘n遍x，时间复杂度O(n)，超时。</p>
+<p>二分法，这个比较容易想到，网上也有不少类似的解法，时间复杂度O(logn)，可以通过。</p>
+<p>还有一种方法：]]>
+    </summary>
+    
+      <category term="leetcode" scheme="https://danye.me/tags/leetcode/"/>
+    
+      <category term="algorithm" scheme="https://danye.me/tags/algorithm/"/>
+    
+      <category term="C++" scheme="https://danye.me/tags/C/"/>
+    
+      <category term="coding" scheme="https://danye.me/categories/coding/"/>
+    
+  </entry>
+  
+  <entry>
+    <title><![CDATA[微信红包算法探讨]]></title>
+    <link href="https://danye.me/2015/02/21/wechat-lishi/"/>
+    <id>https://danye.me/2015/02/21/wechat-lishi/</id>
+    <published>2015-02-21T08:29:00.000Z</published>
+    <updated>2016-01-27T09:50:22.000Z</updated>
+    <content type="html"><![CDATA[<p>今年过年微信红包成了全民焦点，虽然大多数的红包就一块八角的样子，还是搞得大家乐此不彼地，蛋爷我年三十晚什么都没干就守在手机旁边不是摇手机红包就是抢群红包。作为一名程序猿，自然会想了解下红包的实现细节。我在网上谷歌了下，微信目前是没有公布红包的实现细节的，所以这里就提出一个自己的方案。</p>
+<h2 id="微信红包规则">微信红包规则</h2>
+<p>红包领了不少，据观察红包主要有以下几个限制条件：</p>
+<ol>
+<li>所有人都能分到红包，也就是不会出现红包数值为0的情况。</li>
+<li>所有人的红包数值加起来等于支付的金额。</li>
+<li>红包波动范围比较大，约5%~8%的红包数值在平均值的两倍以上，同时数额0.01出现的概率比较高。</li>
+<li>红包的数值是随机的，并且数值的分布近似于正态分布。<a id="more"></a>
+</li>
+</ol>
+<p>这里假设红包的总金额为T，红包个数为k，第i个红包的金额为ai，红包金额生成函数为rand(之后会讨论这个函数)。</p>
+<p>因为每个红包的最小值为0.01，所以在初始的时候为每个红包预留0.01元，那么剩余金额总数为<code>T-0.01*k</code>。</p>
+<p>为了让每个红包金额都是随机的，红包将会由系统逐一生成，金额为当前剩余金额范围内的随机数。算法如下：</p>
+<blockquote>
+<p>ai = rand(T - 0.01 * k - a0 - … - ai-1)</p>
+</blockquote>
+<h2 id="正态分布的实现">正态分布的实现</h2>
+<p>由于C++等语言提供的随机函数是平均分布的，因此如果需要使红包金额近似正态分布，需要对平均分布进行<a href="http://en.wikipedia.org/wiki/Box%E2%80%93Muller_transform" target="_blank" rel="external">Box–Muller</a>转换操作，C++实现代码如下：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div></pre></td><td class="code"><pre><div class="line"><span class="preprocessor">#<span class="keyword">define</span> TWO_PI 6.2831853071795864769252866</span></div><div class="line"><span class="preprocessor">#<span class="keyword">include</span> &lt;cmath&gt;</span></div><div class="line"><span class="preprocessor">#<span class="keyword">include</span> &lt;cstdlib&gt;</span></div><div class="line"><span class="keyword">double</span> generateGaussianNoise(<span class="keyword">const</span> <span class="keyword">double</span> mu, <span class="keyword">const</span> <span class="keyword">double</span> sigma)</div><div class="line">{</div><div class="line">    <span class="keyword">using</span> <span class="keyword">namespace</span> <span class="built_in">std</span>;</div><div class="line">    <span class="keyword">static</span> <span class="keyword">bool</span> haveSpare = <span class="keyword">false</span>;</div><div class="line">    <span class="keyword">static</span> <span class="keyword">double</span> rand1, rand2;</div><div class="line"> </div><div class="line">    <span class="keyword">if</span>(haveSpare)</div><div class="line">    {</div><div class="line">        haveSpare = <span class="keyword">false</span>;</div><div class="line">        <span class="keyword">return</span> (sigma * <span class="built_in">sqrt</span>(rand1) * <span class="built_in">sin</span>(rand2)) + mu;</div><div class="line">    }</div><div class="line"> </div><div class="line">    haveSpare = <span class="keyword">true</span>;</div><div class="line"> </div><div class="line">    rand1 = rand() / ((<span class="keyword">double</span>) RAND_MAX);</div><div class="line">    <span class="keyword">if</span>(rand1 &lt; <span class="number">1e-100</span>) rand1 = <span class="number">1e-100</span>;</div><div class="line">    rand1 = -<span class="number">2</span> * <span class="built_in">log</span>(rand1);</div><div class="line">    rand2 = (rand() / ((<span class="keyword">double</span>) RAND_MAX)) * TWO_PI;</div><div class="line"> </div><div class="line">    <span class="keyword">return</span> (sigma * <span class="built_in">sqrt</span>(rand1) * <span class="built_in">cos</span>(rand2)) + mu;</div><div class="line">}</div></pre></td></tr></table></figure>
+
+<p>函数<code>generateGaussianNoise</code>的两个参数为期望值mu和标准差sigma，显然，mu的值为当前红包的均值，令分配第i个红包时所剩总金额为Ti，所以：</p>
+<blockquote>
+<p>Ti = T - 0.01 * k - a0 - … - ai-1 </p>
+</blockquote>
+<p>易得：</p>
+<blockquote>
+<p>mu = Ti / (k - i)</p>
+</blockquote>
+<h2 id="sigma的值">sigma的值</h2>
+<p>红包数额的分布并不完全符合正太分布，因为每个红包的数额都有上限和下限，所以准确地说应该是截尾正态分布，在这里红包金额范围为[0, Ti]。</p>
+<p>剩下要做的就是确定sigma的数值，sigma的值会直接影响红包数额的分布曲线。</p>
+<p>根据正态分布的三个sigma定理, 生成的随机数值有95.449974%几率落在(mu-2*sigma,mu+2*sigma)内，为了使得mu-2*sigma = 0，sigma = mu/2。对于生成的随机数落在[0, Ti]以外区间的情况，采用截断处理，统一返回0或者Ti。也就是说，最后生成的随机数值分别有大约6%的几率为0或者大于2*mu，加上保留的0.01，符合条件3列出的情况。最后给出这部分C++的代码：</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div></pre></td><td class="code"><pre><div class="line"><span class="preprocessor">#<span class="keyword">include</span> &lt;vector&gt;</span></div><div class="line"><span class="stl_container"><span class="built_in">vector</span>&lt;<span class="keyword">double</span>&gt;</span> generateMoneyVector(<span class="keyword">const</span> <span class="keyword">double</span> mon, <span class="keyword">const</span> <span class="keyword">int</span> pics)</div><div class="line">{</div><div class="line">    <span class="stl_container"><span class="built_in">vector</span>&lt;<span class="keyword">double</span>&gt;</span> valueVec;</div><div class="line">    <span class="keyword">double</span> moneyLeft = mon - pics * <span class="number">0.01</span>;</div><div class="line">    <span class="keyword">double</span> mu, sigma;</div><div class="line">    <span class="keyword">double</span> noiseValue;</div><div class="line"></div><div class="line">    <span class="keyword">for</span>(<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; pics - <span class="number">1</span>; i++)</div><div class="line">    {</div><div class="line">        mu = moneyLeft / (pics - i);</div><div class="line">        sigma = mu / <span class="number">2</span>;</div><div class="line">        noiseValue = generateGaussianNoise(mu, sigma);</div><div class="line">        </div><div class="line">        <span class="keyword">if</span>(noiseValue &lt; <span class="number">0</span>) noiseValue = <span class="number">0</span>;</div><div class="line">        <span class="keyword">if</span>(noiseValue &gt; moneyLeft) noiseValue = moneyLeft;</div><div class="line">        </div><div class="line">        valueVec.push_back(noiseValue + <span class="number">0.01</span>);</div><div class="line">        moneyLeft -= noiseValue;</div><div class="line">    }</div><div class="line"></div><div class="line">    <span class="keyword">return</span> valueVec;</div><div class="line">}</div></pre></td></tr></table></figure>
+
+<p>剩下的就是具体工程上实现的部分了。</p>
+<h2 id="结语">结语</h2>
+<p>这里还有一些细节没有处理，例如对返回值进行小数位数的处理等，就不做细致说明了。以上只是我对微信红包算法的一种个人猜想，有不足的地方望多指教。</p>
+<h2 id="References">References</h2>
+<ol>
+<li><a href="http://en.wikipedia.org/wiki/Normal_distribution" target="_blank" rel="external">http://en.wikipedia.org/wiki/Normal_distribution</a></li>
+<li><a href="http://en.wikipedia.org/wiki/Box%E2%80%93Muller_transform" target="_blank" rel="external">http://en.wikipedia.org/wiki/Box%E2%80%93Muller_transform</a></li>
+</ol>
+<h2 id="转载请注明">转载请注明</h2>
+<p>原文地址：<a href="https://danye.me/2015/02/21/wechat-lishi/" target="_blank" rel="external">https://danye.me/2015/02/21/wechat-lishi/</a></p>
+]]></content>
+    <summary type="html">
+    <![CDATA[<p>今年过年微信红包成了全民焦点，虽然大多数的红包就一块八角的样子，还是搞得大家乐此不彼地，蛋爷我年三十晚什么都没干就守在手机旁边不是摇手机红包就是抢群红包。作为一名程序猿，自然会想了解下红包的实现细节。我在网上谷歌了下，微信目前是没有公布红包的实现细节的，所以这里就提出一个自己的方案。</p>
+<h2 id="微信红包规则">微信红包规则</h2>
+<p>红包领了不少，据观察红包主要有以下几个限制条件：</p>
+<ol>
+<li>所有人都能分到红包，也就是不会出现红包数值为0的情况。</li>
+<li>所有人的红包数值加起来等于支付的金额。</li>
+<li>红包波动范围比较大，约5%~8%的红包数值在平均值的两倍以上，同时数额0.01出现的概率比较高。</li>
+<li>红包的数值是随机的，并且数值的分布近似于正态分布。]]>
+    
+    </summary>
+    
+      <category term="微信" scheme="https://danye.me/tags/%E5%BE%AE%E4%BF%A1/"/>
+    
+      <category term="红包" scheme="https://danye.me/tags/%E7%BA%A2%E5%8C%85/"/>
+    
+      <category term="algorithm" scheme="https://danye.me/tags/algorithm/"/>
+    
+      <category term="C++" scheme="https://danye.me/tags/C/"/>
+    
+      <category term="coding" scheme="https://danye.me/categories/coding/"/>
+    
+  </entry>
+  
+  <entry>
+    <title><![CDATA[linux中udp缓冲区大小的查看与设置]]></title>
+    <link href="https://danye.me/2015/02/13/linux-udp-buffer/"/>
+    <id>https://danye.me/2015/02/13/linux-udp-buffer/</id>
+    <published>2015-02-13T13:37:00.000Z</published>
+    <updated>2016-01-25T08:09:22.000Z</updated>
+    <content type="html"><![CDATA[<p>鉴于tcp有重传机制，更多的时候udp对收发缓冲区的大小可能更加敏感一点。</p>
+<p>udp缓冲区的大小主要和以下几个值有关：</p>
+<ol>
+<li>/proc/sys/net/core/rmem_max ——— udp缓冲区的最大值，单位字节，下同</li>
+<li>/proc/sys/net/core/rmem_default ———- udp缓冲区的默认值，如果不更改的话程序的udp缓冲区默认值就是这个。</li>
+</ol>
+<p>查看方法可以直接<code>cat</code>以上两个文件进行查看，也可以通过<code>sysctl</code>查看。<br><a id="more"></a></p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">sysctl <span class="operator">-a</span> | grep rmem_max</div></pre></td></tr></table></figure>
+
+<p>其实sysctl信息来源就是<code>proc</code>下的文件。</p>
+<h2 id="更改udp缓冲区大小">更改udp缓冲区大小</h2>
+<h2 id="#程序中进行更改">#程序中进行更改</h2>
+<p>程序中可以使用setsockopt函数与SO_RCVBUF选项对udp缓冲区的值进行更改，但是要注意不管设置的值有多大，超过rmem_max的部分都会被无视。</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div></pre></td><td class="code"><pre><div class="line">int a = value_wanted;</div><div class="line"><span class="keyword">if</span> (setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &a, sizeof(int)) == -<span class="number">1</span>) {</div><div class="line">    <span class="keyword">...</span></div><div class="line">}</div></pre></td></tr></table></figure>
+
+<h2 id="#更改系统值">#更改系统值</h2>
+<p>如果确实要把udp缓冲区改到一个比较大的值，那就需要更改rmem_max的值。<br>编辑/etc/rc.local文件添加以下代码可使系统在每次启动的时候自动更改系统缓冲区的最大值。</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">echo value_wanted &gt; /<span class="keyword">proc</span>/sys/net/core/rmem_default</div></pre></td></tr></table></figure>
+
+<p>或者在/etc/sysctl.conf添加以下代码即可在重启后永久生效。</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line"><span class="attribute">rmem_max</span>=<span class="string">MAX</span></div></pre></td></tr></table></figure>
+
+<p>不想重启的话使用命令<code>sysctl -p</code>即可。</p>
+<p>可以顺便看下setsockopt在linux下的相关实现</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">...</span></div><div class="line"></div><div class="line">case SO_SNDBUF:</div><div class="line">    <span class="keyword">if</span> (val &gt; sysctl_wmem_max)</div><div class="line">        val = sysctl_wmem_max;</div><div class="line"></div><div class="line">    <span class="keyword">if</span> ((val * <span class="number">2</span>) &lt; SOCK_MIN_SNDBUF)</div><div class="line">        sk-&gt;sk_sndbuf = SOCK_MIN_SNDBUF;</div><div class="line">    <span class="keyword">else</span></div><div class="line">        sk-&gt;sk_sndbuf = val * <span class="number">2</span>; //当然缓冲区在系统中的实际值要大一点，因为udp报头以及IP报头等都是需要空间的。</div><div class="line"><span class="keyword">...</span></div></pre></td></tr></table></figure>
+
+]]></content>
+    <summary type="html">
+    <![CDATA[<p>鉴于tcp有重传机制，更多的时候udp对收发缓冲区的大小可能更加敏感一点。</p>
+<p>udp缓冲区的大小主要和以下几个值有关：</p>
+<ol>
+<li>/proc/sys/net/core/rmem_max ——— udp缓冲区的最大值，单位字节，下同</li>
+<li>/proc/sys/net/core/rmem_default ———- udp缓冲区的默认值，如果不更改的话程序的udp缓冲区默认值就是这个。</li>
+</ol>
+<p>查看方法可以直接<code>cat</code>以上两个文件进行查看，也可以通过<code>sysctl</code>查看。<br>]]>
+    
+    </summary>
+    
+      <category term="linux" scheme="https://danye.me/tags/linux/"/>
+    
+      <category term="udp" scheme="https://danye.me/tags/udp/"/>
+    
+      <category term="buffer" scheme="https://danye.me/tags/buffer/"/>
+    
+      <category term="coding" scheme="https://danye.me/categories/coding/"/>
+    
+  </entry>
+  
+  <entry>
+    <title><![CDATA[小丑的蝙蝠侠——YouCompleteMe]]></title>
+    <link href="https://danye.me/2015/01/06/youcompleteme/"/>
+    <id>https://danye.me/2015/01/06/youcompleteme/</id>
+    <published>2015-01-06T07:36:00.000Z</published>
+    <updated>2016-01-25T13:48:36.000Z</updated>
+    <content type="html"><![CDATA[<p>YouCompleteMe(以下简称YCM), 目前vim上最优秀的补全插件。</p>
+<h2 id="#简介">#简介</h2>
+<p>vim上有很多补全插件，像ctags, cscope, neocomplete等。这些插件或多或少我都用过，总体感觉就是在瞎XX猜。相比之下，YCM与这些插件有着本质的区别，它基于语法分析，补全精准快速，即使是在百兆源码文件中使用也不会有显著的的效率下降，支持C家族全系语言，亲测还支持python、js等，可以说很大程度上解决了vim补全上的问题。<br><a id="more"></a><br>YCM由谷歌工程师Strahinja Val Markovic开发,使用的是C/S架构，在vim启动的时候服务端就会自动运行，正常情况下是感受不到YCM的存在的。YCM的语义分析使用的是clang(就是mac上的默认编译器)，C端使用C++开发，据说是为了提高效率，再由python进行封装，是不是觉得有点晕菜？没关系，其实你只要记住YCM很好用就行了。附一张效果图，btw，YCM还有补全路径、跳转到定义声明这些貌似不太起眼但是非常实用的功能，用起来感觉各种惊喜。<br><!-- ![ycm-demo](http://ccxcu.img43.wal8.com/img43/507748_20150118041318/142245596241.gif) --></p>
+<h2 id="#mac下的安装">#mac下的安装</h2>
+<p>YCM的语义分析用的是clang，因此在YCM在mac的安装也是最简单直接的。<br>使用vundle安装YCM，在.vimrc文件中添加以下代码：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">Bundle <span class="string">'Valloric/YouCompleteMe'</span></div></pre></td></tr></table></figure>
+
+<p>打开vim输入</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">:BundleInstall</div></pre></td></tr></table></figure>
+
+
+
+<p>等待YCM下载完成。然后进入文件夹进行编译：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line"><span class="built_in">cd</span> ~/.vim/bundle/YouCompleteMe</div><div class="line">./install --clang-completer --system-libclang</div></pre></td></tr></table></figure>
+
+<p>这里要注意一下<strong>—system-libclang</strong>这个参数，之前我编译的时候没有加入这个参数，YCM会下载默认的clang包导致编译出错，原因我也不清楚，不过加上之后YCM就会使用mac自带的clang，可以正常编译。</p>
+<p>YCM是基于macvim开发的，作者也是建议使用macvim以保证script的正确执行，不过貌似直接使用vim也不会有很大的问题，如果实在不放心，可以安装macvim之后在.bash_profile下加入以下代码:</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">alias vim=<span class="string">'/Applications/MacVim.app/Contents/MacOS/Vim -v'</span></div></pre></td></tr></table></figure>
+
+<p>这样在命令行中使用的vim都会是macvim的vim。记住不要使用软连接，这样子macvim的vim没有办法正常启动。</p>
+<h2 id="#配置">#配置</h2>
+<p>YCM的默认配置文件是在.vim文件夹中的.ycm_extra_conf.py,在项目根目录下放同名文件就可以对项目进行特定的配置，其实最要就是配置头文件的路径，至于其它更详细的配置，可以参阅YCM的<a href="https://github.com/Valloric/YouCompleteMe" target="_blank" rel="external">项目主页</a>。</p>
+<h2 id="#体验">#体验</h2>
+<ul>
+<li>流畅，在大项目中尤其明显</li>
+<li>可对路径进行补全，这个大爱</li>
+<li>语法检测，说实话我觉得这个有点烦</li>
+<li>定义/声明跳转，YCM的声明跳转没有问题，不过定义跳转会时不时出现失败的情况，作者的解释是如果定义不在一个翻译单元内确实是无法补全的，这个也没有办法了</li>
+</ul>
+<h2 id="#后记">#后记</h2>
+<p>之前一直觉得YouCompleteMe这句话有点耳熟，直到前几天一不小心在Acfun上看到，终于知道是神马回事了。</p>
+<!-- ![joker](http://ccxcu.img43.wal8.com/img43/507748_20150118041318/142245596287.jpg) -->
+]]></content>
+    <summary type="html">
+    <![CDATA[<p>YouCompleteMe(以下简称YCM), 目前vim上最优秀的补全插件。</p>
+<h2 id="#简介">#简介</h2>
+<p>vim上有很多补全插件，像ctags, cscope, neocomplete等。这些插件或多或少我都用过，总体感觉就是在瞎XX猜。相比之下，YCM与这些插件有着本质的区别，它基于语法分析，补全精准快速，即使是在百兆源码文件中使用也不会有显著的的效率下降，支持C家族全系语言，亲测还支持python、js等，可以说很大程度上解决了vim补全上的问题。<br>]]>
+    
+    </summary>
+    
+      <category term="vim" scheme="https://danye.me/tags/vim/"/>
+    
+      <category term="coding" scheme="https://danye.me/categories/coding/"/>
+    
+  </entry>
+  
+  <entry>
+    <title><![CDATA[Article test]]></title>
+    <link href="https://danye.me/2014/12/24/article/"/>
+    <id>https://danye.me/2014/12/24/article/</id>
+    <published>2014-12-24T11:38:00.000Z</published>
+    <updated>2016-01-25T08:09:22.000Z</updated>
+    <content type="html"><![CDATA[<h1 id="Mou">Mou</h1>
+<h2 id="Overview">Overview</h2>
+<p><strong>Mou</strong>, the missing Markdown editor for <em>web developers</em>.</p>
+<h2 id="#_Syntax"># Syntax</h2>
+<h2 id="##_Strong_and_Emphasize">##  Strong and Emphasize</h2>
+<p><strong>strong</strong> or <strong>strong</strong> ( Cmd + B )</p>
+<p><em>emphasize</em> or <em>emphasize</em> ( Cmd + I )</p>
+<p><strong>Sometimes I want a lot of text to be bold.<br>Like, seriously, a <em>LOT</em> of text</strong></p>
+<h2 id="##_Blockquotes">##  Blockquotes</h2>
+<blockquote>
+<p>Right angle brackets &gt; are used for block quotes.<br><a id="more"></a></p>
+<h2 id="##_Links_and_Email">##  Links and Email</h2>
+</blockquote>
+<p>An email <a href="&#x6d;&#x61;&#105;&#x6c;&#116;&#111;&#x3a;&#101;&#120;&#x61;&#109;&#x70;&#108;&#101;&#x40;&#x65;&#x78;&#97;&#109;&#x70;&#108;&#x65;&#46;&#x63;&#x6f;&#109;">&#101;&#120;&#x61;&#109;&#x70;&#108;&#101;&#x40;&#x65;&#x78;&#97;&#109;&#x70;&#108;&#x65;&#46;&#x63;&#x6f;&#109;</a> link.</p>
+<p>Simple inline link <a href="http://chenluois.com" target="_blank" rel="external">http://chenluois.com</a>, another inline link <a href="http://25.io/smaller/" target="_blank" rel="external">Smaller</a>, one more inline link with title <a href="http://resizesafari.com" title="a Safari extension" target="_blank" rel="external">Resize</a>.</p>
+<p>A <a href="http://25.io/mou/" title="Markdown editor on Mac OS X" target="_blank" rel="external">reference style</a> link. Input id, then anywhere in the doc, define the link with corresponding id:</p>
+<p>Titles ( or called tool tips ) in the links are optional.</p>
+<h2 id="##_Images">##  Images</h2>
+<p>An inline image, title is optional.</p>
+<p>A Resize reference style image.</p>
+<h2 id="##_Inline_code_and_Block_code">##  Inline code and Block code</h2>
+<p>Inline code are surround by <code>backtick</code> key. To create a block code:</p>
+<pre><code>Indent <span class="keyword">each</span> <span class="built_in">line</span> <span class="keyword">by</span> <span class="keyword">at</span> least <span class="number">1</span> <span class="constant">tab</span>, <span class="operator">or</span> <span class="number">4</span> spaces.
+var Mou = exactlyTheAppIwant; 
+</code></pre><h2 id="##_Ordered_Lists">##   Ordered Lists</h2>
+<p>Ordered lists are created using “1.” + Space:</p>
+<ol>
+<li>Ordered list item</li>
+<li>Ordered list item</li>
+<li>Ordered list item</li>
+</ol>
+<h2 id="##_Unordered_Lists">##  Unordered Lists</h2>
+<p>Unordered list are created using “*” + Space:</p>
+<ul>
+<li>Unordered list item</li>
+<li>Unordered list item</li>
+<li>Unordered list item </li>
+</ul>
+<p>Or using “-“ + Space:</p>
+<ul>
+<li>Unordered list item</li>
+<li>Unordered list item</li>
+<li>Unordered list item</li>
+</ul>
+<h2 id="##_Hard_Linebreak">##  Hard Linebreak</h2>
+<p>End a line with two or more spaces will create a hard linebreak, called <code>&lt;br /&gt;</code> in HTML. ( Control + Return )<br>Above line ended with 2 spaces.</p>
+<h2 id="##_Horizontal_Rules">##  Horizontal Rules</h2>
+<p>Three or more asterisks or dashes:</p>
+<hr>
+<hr>
+<hr>
+<h2 id="##_Headers">##  Headers</h2>
+<p>Setext-style:</p>
+<h1 id="This_is_H1">This is H1</h1>
+<h2 id="This_is_H2">This is H2</h2>
+<p>atx-style:</p>
+<h1 id="This_is_H1-1">This is H1</h1>
+<h2 id="This_is_H2-1">This is H2</h2>
+<h2 id="#_This_is_H3"># This is H3</h2>
+<h2 id="##_This_is_H4">##  This is H4</h2>
+<h2 id="##_#_This_is_H5">## # This is H5</h2>
+<h2 id="##_##_This_is_H6">## ##  This is H6</h2>
+<h2 id="#_Extra_Syntax"># Extra Syntax</h2>
+<h2 id="##_Footnotes">##  Footnotes</h2>
+<p>Footnotes work mostly like reference-style links. A footnote is made of two things: a marker in the text that will become a superscript number; a footnote definition that will be placed in a list of footnotes at the end of the document. A footnote looks like this:</p>
+<p>That’s some text with a footnote.[^1]</p>
+<p>[^1]: And that’s the footnote.</p>
+<h2 id="##_Strikethrough">##  Strikethrough</h2>
+<p>Wrap with 2 tilde characters:</p>
+<p><del>Strikethrough</del></p>
+<h2 id="##_Fenced_Code_Blocks">##  Fenced Code Blocks</h2>
+<p>Start with a line containing 3 or more backticks, and ends with the first line with the same number of backticks:</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div></pre></td><td class="code"><pre><div class="line">Fenced code blocks are like Stardard Markdown’s regular code</div><div class="line">blocks, except that they’re <span class="operator">not</span> indented <span class="operator">and</span> instead rely <span class="command"><span class="keyword">on</span></span></div><div class="line"><span class="operator">a</span> start <span class="operator">and</span> <span class="function"><span class="keyword">end</span> <span class="title">fence</span> <span class="title">lines</span> <span class="title">to</span> <span class="title">delimit</span> <span class="title">the</span> <span class="title">code</span> <span class="title">block</span>.</span></div></pre></td></tr></table></figure>
+
+<h2 id="##_Tables">##  Tables</h2>
+<p>A simple table looks like this:</p>
+<table>
+<thead>
+<tr>
+<th>First Header</th>
+<th>Second Header</th>
+<th>Third Header</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Content Cell</td>
+<td>Content Cell</td>
+<td>Content Cell</td>
+</tr>
+<tr>
+<td>Content Cell</td>
+<td>Content Cell</td>
+<td>Content Cell</td>
+</tr>
+</tbody>
+</table>
+<p>If you wish, you can add a leading and tailing pipe to each line of the table:</p>
+<table>
+<thead>
+<tr>
+<th>First Header</th>
+<th>Second Header</th>
+<th>Third Header</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Content Cell</td>
+<td>Content Cell</td>
+<td>Content Cell</td>
+</tr>
+<tr>
+<td>Content Cell</td>
+<td>Content Cell</td>
+<td>Content Cell</td>
+</tr>
+</tbody>
+</table>
+<p>Specify alignment for each column by adding colons to separator lines:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">First Header</th>
+<th style="text-align:center">Second Header</th>
+<th style="text-align:right">Third Header</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left">Left</td>
+<td style="text-align:center">Center</td>
+<td style="text-align:right">Right</td>
+</tr>
+<tr>
+<td style="text-align:left">Left</td>
+<td style="text-align:center">Center</td>
+<td style="text-align:right">Right</td>
+</tr>
+</tbody>
+</table>
+<h2 id="#_Shortcuts"># Shortcuts</h2>
+<h2 id="##_View">##  View</h2>
+<ul>
+<li>Toggle live preview: Shift + Cmd + I</li>
+<li>Toggle Words Counter: Shift + Cmd + W</li>
+<li>Toggle Transparent: Shift + Cmd + T</li>
+<li>Toggle Floating: Shift + Cmd + F</li>
+<li>Left/Right = 1/1: Cmd + 0</li>
+<li>Left/Right = 3/1: Cmd + +</li>
+<li>Left/Right = 1/3: Cmd + -</li>
+<li>Toggle Writing orientation: Cmd + L</li>
+<li>Toggle fullscreen: Control + Cmd + F</li>
+</ul>
+<h2 id="##_Actions">##  Actions</h2>
+<ul>
+<li>Copy HTML: Option + Cmd + C</li>
+<li>Strong: Select text, Cmd + B</li>
+<li>Emphasize: Select text, Cmd + I</li>
+<li>Inline Code: Select text, Cmd + K</li>
+<li>Strikethrough: Select text, Cmd + U</li>
+<li>Link: Select text, Control + Shift + L</li>
+<li>Image: Select text, Control + Shift + I</li>
+<li>Select Word: Control + Option + W</li>
+<li>Select Line: Shift + Cmd + L</li>
+<li>Select All: Cmd + A</li>
+<li>Deselect All: Cmd + D</li>
+<li>Convert to Uppercase: Select text, Control + U</li>
+<li>Convert to Lowercase: Select text, Control + Shift + U</li>
+<li>Convert to Titlecase: Select text, Control + Option + U</li>
+<li>Convert to List: Select lines, Control + L</li>
+<li>Convert to Blockquote: Select lines, Control + Q</li>
+<li>Convert to H1: Cmd + 1</li>
+<li>Convert to H2: Cmd + 2</li>
+<li>Convert to H3: Cmd + 3</li>
+<li>Convert to H4: Cmd + 4</li>
+<li>Convert to H5: Cmd + 5</li>
+<li>Convert to H6: Cmd + 6</li>
+<li>Convert Spaces to Tabs: Control + [</li>
+<li>Convert Tabs to Spaces: Control + ]</li>
+<li>Insert Current Date: Control + Shift + 1</li>
+<li>Insert Current Time: Control + Shift + 2</li>
+<li>Insert entity &lt;: Control + Shift + ,</li>
+<li>Insert entity &gt;: Control + Shift + .</li>
+<li>Insert entity &amp;: Control + Shift + 7</li>
+<li>Insert entity Space: Control + Shift + Space</li>
+<li>Insert Scriptogr.am Header: Control + Shift + G</li>
+<li>Shift Line Left: Select lines, Cmd + [</li>
+<li>Shift Line Right: Select lines, Cmd + ]</li>
+<li>New Line: Cmd + Return</li>
+<li>Comment: Cmd + /</li>
+<li>Hard Linebreak: Control + Return</li>
+</ul>
+<h2 id="##_Edit">##  Edit</h2>
+<ul>
+<li>Auto complete current word: Esc</li>
+<li>Find: Cmd + F</li>
+<li>Close find bar: Esc</li>
+</ul>
+<h2 id="##_Post">##  Post</h2>
+<ul>
+<li>Post on Scriptogr.am: Control + Shift + S</li>
+<li>Post on Tumblr: Control + Shift + T</li>
+</ul>
+<h2 id="##_Export">##  Export</h2>
+<ul>
+<li>Export HTML: Option + Cmd + E</li>
+<li>Export PDF:  Option + Cmd + P</li>
+</ul>
+<h2 id="#_And_more?"># And more?</h2>
+<p>Don’t forget to check Preferences, lots of useful options are there.</p>
+<p>Follow <a href="https://twitter.com/mou" target="_blank" rel="external">@Mou</a> on Twitter for the latest news.</p>
+<p>For feedback, use the menu <code>Help</code> - <code>Send Feedback</code></p>
+]]></content>
+    <summary type="html">
+    <![CDATA[<h1 id="Mou">Mou</h1>
+<h2 id="Overview">Overview</h2>
+<p><strong>Mou</strong>, the missing Markdown editor for <em>web developers</em>.</p>
+<h2 id="#_Syntax"># Syntax</h2>
+<h2 id="##_Strong_and_Emphasize">##  Strong and Emphasize</h2>
+<p><strong>strong</strong> or <strong>strong</strong> ( Cmd + B )</p>
+<p><em>emphasize</em> or <em>emphasize</em> ( Cmd + I )</p>
+<p><strong>Sometimes I want a lot of text to be bold.<br>Like, seriously, a <em>LOT</em> of text</strong></p>
+<h2 id="##_Blockquotes">##  Blockquotes</h2>
+<blockquote>
+<p>Right angle brackets &gt; are used for block quotes.<br>]]>
+    
+    </summary>
+    
+      <category term="article" scheme="https://danye.me/tags/article/"/>
+    
+      <category term="article" scheme="https://danye.me/categories/article/"/>
+    
+  </entry>
+  
+</feed>

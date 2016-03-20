@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>微信红包算法探讨 | 坚强的鸡蛋</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="今年过年微信红包成了全民焦点，虽然大多数的红包就一块八角的样子，还是搞得大家乐此不彼地，蛋爷我年三十晚什么都没干就守在手机旁边不是摇手机红包就是抢群红包。作为一名程序猿，自然会想了解下红包的实现细节。我在网上谷歌了下，微信目前是没有公布红包的实现细节的，所以这里就提出一个自己的方案。
+微信红包规则
+红包领了不少，据观察红包主要有以下几个限制条件：
+
+所有人都能分到红包，也就是不会出现红包数值为0的">
+<meta property="og:type" content="article">
+<meta property="og:title" content="微信红包算法探讨">
+<meta property="og:url" content="https://danye.me/2015/02/21/wechat-lishi/">
+<meta property="og:site_name" content="坚强的鸡蛋">
+<meta property="og:description" content="今年过年微信红包成了全民焦点，虽然大多数的红包就一块八角的样子，还是搞得大家乐此不彼地，蛋爷我年三十晚什么都没干就守在手机旁边不是摇手机红包就是抢群红包。作为一名程序猿，自然会想了解下红包的实现细节。我在网上谷歌了下，微信目前是没有公布红包的实现细节的，所以这里就提出一个自己的方案。
+微信红包规则
+红包领了不少，据观察红包主要有以下几个限制条件：
+
+所有人都能分到红包，也就是不会出现红包数值为0的">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="微信红包算法探讨">
+<meta name="twitter:description" content="今年过年微信红包成了全民焦点，虽然大多数的红包就一块八角的样子，还是搞得大家乐此不彼地，蛋爷我年三十晚什么都没干就守在手机旁边不是摇手机红包就是抢群红包。作为一名程序猿，自然会想了解下红包的实现细节。我在网上谷歌了下，微信目前是没有公布红包的实现细节的，所以这里就提出一个自己的方案。
+微信红包规则
+红包领了不少，据观察红包主要有以下几个限制条件：
+
+所有人都能分到红包，也就是不会出现红包数值为0的">
+
+  
+    <link rel="alternative" href="/atom.xml" title="坚强的鸡蛋" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  <link href="//fonts.googleapis.com/css?family=Ubuntu" rel="stylesheet" type="text/css">
+  <link rel="stylesheet" href="/css/style.css" type="text/css">
+
+  
+</head>
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">坚强的鸡蛋</a>
+      </h1>
+      
+        <h2 id="subtitle-wrap">
+          <a href="/" id="subtitle">Collect the dots in your life.</a>
+        </h2>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="sub-nav">
+        
+          <a id="nav-home-icon" class="nav-icon" href="/"></a>
+        
+          <a id="nav-archives-icon" class="nav-icon" href="/archives"></a>
+        
+          <a id="nav-about-icon" class="nav-icon" href="/about"></a>
+        
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+      </nav>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-wechat-lishi" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      微信红包算法探讨
+    </h1>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2015-02-21T08:29:00.000Z" itemprop="datePublished">02-21-2015</time>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/coding/">coding</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>今年过年微信红包成了全民焦点，虽然大多数的红包就一块八角的样子，还是搞得大家乐此不彼地，蛋爷我年三十晚什么都没干就守在手机旁边不是摇手机红包就是抢群红包。作为一名程序猿，自然会想了解下红包的实现细节。我在网上谷歌了下，微信目前是没有公布红包的实现细节的，所以这里就提出一个自己的方案。</p>
+<h2 id="微信红包规则">微信红包规则</h2>
+<p>红包领了不少，据观察红包主要有以下几个限制条件：</p>
+<ol>
+<li>所有人都能分到红包，也就是不会出现红包数值为0的情况。</li>
+<li>所有人的红包数值加起来等于支付的金额。</li>
+<li>红包波动范围比较大，约5%~8%的红包数值在平均值的两倍以上，同时数额0.01出现的概率比较高。</li>
+<li>红包的数值是随机的，并且数值的分布近似于正态分布。<a id="more"></a>
+</li>
+</ol>
+<p>这里假设红包的总金额为T，红包个数为k，第i个红包的金额为ai，红包金额生成函数为rand(之后会讨论这个函数)。</p>
+<p>因为每个红包的最小值为0.01，所以在初始的时候为每个红包预留0.01元，那么剩余金额总数为<code>T-0.01*k</code>。</p>
+<p>为了让每个红包金额都是随机的，红包将会由系统逐一生成，金额为当前剩余金额范围内的随机数。算法如下：</p>
+<blockquote>
+<p>ai = rand(T - 0.01 * k - a0 - … - ai-1)</p>
+</blockquote>
+<h2 id="正态分布的实现">正态分布的实现</h2>
+<p>由于C++等语言提供的随机函数是平均分布的，因此如果需要使红包金额近似正态分布，需要对平均分布进行<a href="http://en.wikipedia.org/wiki/Box%E2%80%93Muller_transform" target="_blank" rel="external">Box–Muller</a>转换操作，C++实现代码如下：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div></pre></td><td class="code"><pre><div class="line"><span class="preprocessor">#<span class="keyword">define</span> TWO_PI 6.2831853071795864769252866</span></div><div class="line"><span class="preprocessor">#<span class="keyword">include</span> &lt;cmath&gt;</span></div><div class="line"><span class="preprocessor">#<span class="keyword">include</span> &lt;cstdlib&gt;</span></div><div class="line"><span class="keyword">double</span> generateGaussianNoise(<span class="keyword">const</span> <span class="keyword">double</span> mu, <span class="keyword">const</span> <span class="keyword">double</span> sigma)</div><div class="line">{</div><div class="line">    <span class="keyword">using</span> <span class="keyword">namespace</span> <span class="built_in">std</span>;</div><div class="line">    <span class="keyword">static</span> <span class="keyword">bool</span> haveSpare = <span class="keyword">false</span>;</div><div class="line">    <span class="keyword">static</span> <span class="keyword">double</span> rand1, rand2;</div><div class="line"> </div><div class="line">    <span class="keyword">if</span>(haveSpare)</div><div class="line">    {</div><div class="line">        haveSpare = <span class="keyword">false</span>;</div><div class="line">        <span class="keyword">return</span> (sigma * <span class="built_in">sqrt</span>(rand1) * <span class="built_in">sin</span>(rand2)) + mu;</div><div class="line">    }</div><div class="line"> </div><div class="line">    haveSpare = <span class="keyword">true</span>;</div><div class="line"> </div><div class="line">    rand1 = rand() / ((<span class="keyword">double</span>) RAND_MAX);</div><div class="line">    <span class="keyword">if</span>(rand1 &lt; <span class="number">1e-100</span>) rand1 = <span class="number">1e-100</span>;</div><div class="line">    rand1 = -<span class="number">2</span> * <span class="built_in">log</span>(rand1);</div><div class="line">    rand2 = (rand() / ((<span class="keyword">double</span>) RAND_MAX)) * TWO_PI;</div><div class="line"> </div><div class="line">    <span class="keyword">return</span> (sigma * <span class="built_in">sqrt</span>(rand1) * <span class="built_in">cos</span>(rand2)) + mu;</div><div class="line">}</div></pre></td></tr></table></figure>
+
+<p>函数<code>generateGaussianNoise</code>的两个参数为期望值mu和标准差sigma，显然，mu的值为当前红包的均值，令分配第i个红包时所剩总金额为Ti，所以：</p>
+<blockquote>
+<p>Ti = T - 0.01 * k - a0 - … - ai-1 </p>
+</blockquote>
+<p>易得：</p>
+<blockquote>
+<p>mu = Ti / (k - i)</p>
+</blockquote>
+<h2 id="sigma的值">sigma的值</h2>
+<p>红包数额的分布并不完全符合正太分布，因为每个红包的数额都有上限和下限，所以准确地说应该是截尾正态分布，在这里红包金额范围为[0, Ti]。</p>
+<p>剩下要做的就是确定sigma的数值，sigma的值会直接影响红包数额的分布曲线。</p>
+<p>根据正态分布的三个sigma定理, 生成的随机数值有95.449974%几率落在(mu-2*sigma,mu+2*sigma)内，为了使得mu-2*sigma = 0，sigma = mu/2。对于生成的随机数落在[0, Ti]以外区间的情况，采用截断处理，统一返回0或者Ti。也就是说，最后生成的随机数值分别有大约6%的几率为0或者大于2*mu，加上保留的0.01，符合条件3列出的情况。最后给出这部分C++的代码：</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div></pre></td><td class="code"><pre><div class="line"><span class="preprocessor">#<span class="keyword">include</span> &lt;vector&gt;</span></div><div class="line"><span class="stl_container"><span class="built_in">vector</span>&lt;<span class="keyword">double</span>&gt;</span> generateMoneyVector(<span class="keyword">const</span> <span class="keyword">double</span> mon, <span class="keyword">const</span> <span class="keyword">int</span> pics)</div><div class="line">{</div><div class="line">    <span class="stl_container"><span class="built_in">vector</span>&lt;<span class="keyword">double</span>&gt;</span> valueVec;</div><div class="line">    <span class="keyword">double</span> moneyLeft = mon - pics * <span class="number">0.01</span>;</div><div class="line">    <span class="keyword">double</span> mu, sigma;</div><div class="line">    <span class="keyword">double</span> noiseValue;</div><div class="line"></div><div class="line">    <span class="keyword">for</span>(<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; pics - <span class="number">1</span>; i++)</div><div class="line">    {</div><div class="line">        mu = moneyLeft / (pics - i);</div><div class="line">        sigma = mu / <span class="number">2</span>;</div><div class="line">        noiseValue = generateGaussianNoise(mu, sigma);</div><div class="line">        </div><div class="line">        <span class="keyword">if</span>(noiseValue &lt; <span class="number">0</span>) noiseValue = <span class="number">0</span>;</div><div class="line">        <span class="keyword">if</span>(noiseValue &gt; moneyLeft) noiseValue = moneyLeft;</div><div class="line">        </div><div class="line">        valueVec.push_back(noiseValue + <span class="number">0.01</span>);</div><div class="line">        moneyLeft -= noiseValue;</div><div class="line">    }</div><div class="line"></div><div class="line">    <span class="keyword">return</span> valueVec;</div><div class="line">}</div></pre></td></tr></table></figure>
+
+<p>剩下的就是具体工程上实现的部分了。</p>
+<h2 id="结语">结语</h2>
+<p>这里还有一些细节没有处理，例如对返回值进行小数位数的处理等，就不做细致说明了。以上只是我对微信红包算法的一种个人猜想，有不足的地方望多指教。</p>
+<h2 id="References">References</h2>
+<ol>
+<li><a href="http://en.wikipedia.org/wiki/Normal_distribution" target="_blank" rel="external">http://en.wikipedia.org/wiki/Normal_distribution</a></li>
+<li><a href="http://en.wikipedia.org/wiki/Box%E2%80%93Muller_transform" target="_blank" rel="external">http://en.wikipedia.org/wiki/Box%E2%80%93Muller_transform</a></li>
+</ol>
+<h2 id="转载请注明">转载请注明</h2>
+<p>原文地址：<a href="https://danye.me/2015/02/21/wechat-lishi/" target="_blank" rel="external">https://danye.me/2015/02/21/wechat-lishi/</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://danye.me/2015/02/21/wechat-lishi/" data-id="bkm7zcnqs5t5v6ui" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/C/">C++</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/algorithm/">algorithm</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/微信/">微信</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/红包/">红包</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2015/03/08/leetcode-pow/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          leetcode pow(x,n)解题报告
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2015/02/13/linux-udp-buffer/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">linux中udp缓冲区大小的查看与设置</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2016 Huaguan, Ma<br>
+      <a href="https://github.com/steven5538/hexo-theme-athena" target="_blank">Athena</a> by <a href="http://steven5538.tw" target="_blank">Steven5538</a> | Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css" type="text/css">
+
+  <script src="/fancybox/jquery.fancybox.pack.js" type="text/javascript"></script>
+
+
+
+<script src="/js/script.js" type="text/javascript"></script>
+
+  </div>
+</body>
+</html>

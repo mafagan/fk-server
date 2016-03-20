@@ -12,6 +12,8 @@ static void do_response(struct session*);
 
 void do_response(struct session *session)
 {
+
+
     char response_buffer[HTTP_RESPONSE_BUF_SIZE];
     uint32_t write_cursor = 0;
 
@@ -24,38 +26,51 @@ void do_response(struct session *session)
     int ret;
     ret = snprintf(response_buffer + write_cursor,
             HTTP_RESPONSE_BUF_SIZE - write_cursor - 1,
-            "%s %d %s\n", "HTTP/1.1", HTTP_OK, "OK");
+            "%s %d %s\r\n", "HTTP/1.1", HTTP_OK, "OK");
     write_cursor += ret;
 
     ret = snprintf(response_buffer + write_cursor,
             HTTP_RESPONSE_BUF_SIZE - write_cursor - 1,
-            "server: feike\n");
+            "server: feike\r\n");
     write_cursor += ret;
 
 
 
-    char file_content[8192];
+    char file_content[81920];
     char file_path[256];
+    uint32_t path_cursor = 0;
 
-    snprintf(file_path, 256, HTTP_ROOT_PATH);
-    strcat(file_path, session->request.uri);
+    ret = snprintf(file_path, 256, HTTP_ROOT_PATH);
+    path_cursor += ret;
+
+    ret = sscanf(session->request.uri, "%s", file_path + path_cursor);
+
+    uint32_t len = strlen(file_path);
+
+    if (file_path[len-1] == '/')
+        strcat(file_path, "index.html");
+
+
+    //strcat(file_path, session->request.uri);
+
 
     FILE *stream = fopen(file_path, "r");
-    int num_read = fread(file_content, sizeof(char), 8192, stream);
+    int num_read = fread(file_content, sizeof(char), 81920, stream);
 
     fclose(stream);
 
     ret = snprintf(response_buffer + write_cursor,
             HTTP_RESPONSE_BUF_SIZE - write_cursor - 1,
-            "Content-Length: %d\n", num_read);
+            "Content-Length: %d\r\n", num_read);
 
     write_cursor += ret;
 
     ret = snprintf(response_buffer + write_cursor,
             HTTP_RESPONSE_BUF_SIZE - write_cursor - 1,
-            "Content-Type: text/html\n");
+            "Content-Type: text/html\r\n");
 
     write_cursor += ret;
+    response_buffer[write_cursor++] = '\r';
     response_buffer[write_cursor++] = '\n';
     response_buffer[write_cursor] = '\0';
 
@@ -63,7 +78,7 @@ void do_response(struct session *session)
 
     ret = write(session->sock, response_buffer, write_cursor + num_read);
 
-    if (ret < 0) return;
+    close(session->sock);
 }
 
 void do_http_request_line_parse(struct session *session)
@@ -117,7 +132,7 @@ void do_http_request_line_parse(struct session *session)
 
 void do_http_request_header_parse(struct session *session)
 {
-    if (session->parse_cursor - session->pre_parse_cursor == 1) {
+    if (session->parse_cursor - session->pre_parse_cursor == 2) {
         session->pre_parse_cursor = session->parse_cursor;
         session->parse_status = REQUEST_END;
     } else {
@@ -129,53 +144,46 @@ void do_http_request_parse(struct session* session)
 {
     http_request_t *request = &(session->request);
 
-    switch(session->parse_status) {
-        case REQUEST_LINE:
+    if (session->parse_status ==  REQUEST_LINE) {
+        while (session->parse_cursor < session->buffer_cursor) {
+            if (session->header[session->parse_cursor] == '\n') {
+                session->parse_cursor ++;
 
-            while (session->parse_cursor < session->buffer_cursor) {
-                if (session->header[session->parse_cursor] == '\n') {
-                    session->parse_cursor ++;
+                do_http_request_line_parse(session);
 
-                    do_http_request_line_parse(session);
-
-                    session->pre_parse_cursor = session->parse_cursor;
-                    session->parse_status = REQUEST_HEADER;
-                    break;
-                } else {
-                    session->parse_cursor ++;
-                }
+                session->pre_parse_cursor = session->parse_cursor;
+                session->parse_status = REQUEST_HEADER;
+                break;
+            } else {
+                session->parse_cursor ++;
             }
-
-
-
-        case REQUEST_HEADER:
-
-            while (session->parse_cursor < session->buffer_cursor) {
-                if (session->header[session->parse_cursor] == '\n') {
-                    session->parse_cursor ++;
-
-                    /* header ending check will be performed */
-                    do_http_request_header_parse(session);
-
-                    if (session->parse_status == REQUEST_END) break;
-
-                } else {
-                    session->parse_cursor ++;
-                }
-            }
-
-
-        case REQUEST_DATA:
-            //TODO
-            break;
-
-        case REQUEST_END:
-            do_response(session);
-            break;
-        default:
-
-            break;
-
+        }
     }
+
+
+    if (session->parse_status == REQUEST_HEADER) {
+
+        while (session->parse_cursor < session->buffer_cursor) {
+            if (session->header[session->parse_cursor] == '\n') {
+                session->parse_cursor ++;
+
+                /* header ending check will be performed */
+                do_http_request_header_parse(session);
+
+            }else {
+                session->parse_cursor ++;
+            }
+        }
+    }
+
+    if (session->parse_status == REQUEST_DATA) {
+        //TODO
+    }
+
+    if (session->parse_status == REQUEST_END) {
+        do_response(session);
+    }
+
+
     return;
 }

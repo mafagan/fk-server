@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>Tag: nested type | 坚强的鸡蛋</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="这里有一只坚强的鸡蛋.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="坚强的鸡蛋">
+<meta property="og:url" content="https://danye.me/tags/nested-type/">
+<meta property="og:site_name" content="坚强的鸡蛋">
+<meta property="og:description" content="这里有一只坚强的鸡蛋.">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="坚强的鸡蛋">
+<meta name="twitter:description" content="这里有一只坚强的鸡蛋.">
+
+  
+    <link rel="alternative" href="/atom.xml" title="坚强的鸡蛋" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  <link href="//fonts.googleapis.com/css?family=Ubuntu" rel="stylesheet" type="text/css">
+  <link rel="stylesheet" href="/css/style.css" type="text/css">
+
+  
+</head>
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">坚强的鸡蛋</a>
+      </h1>
+      
+        <h2 id="subtitle-wrap">
+          <a href="/" id="subtitle">Collect the dots in your life.</a>
+        </h2>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="sub-nav">
+        
+          <a id="nav-home-icon" class="nav-icon" href="/"></a>
+        
+          <a id="nav-archives-icon" class="nav-icon" href="/archives"></a>
+        
+          <a id="nav-about-icon" class="nav-icon" href="/about"></a>
+        
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+      </nav>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main">
+  
+    <article id="post-nested-type" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2015/04/27/nested-type/">《STL源码剖析》读书笔记(二)——typename与嵌套依赖类型</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2015-04-26T16:56:00.000Z" itemprop="datePublished">04-27-2015</time>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/coding/">coding</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>在C++泛型编程中，template中的参数主要有两种声明方法，一种是typename，另一种是class。在这种情况下，typename和class是没有区别的，也就是说是使用typename还是class可以根据自己的喜好选择。</p>
+<h2 id="typename在嵌套类型中的使用">typename在嵌套类型中的使用</h2>
+<p>typename在template中的作用可能是最为大家所熟知的，但是反倒是typename最主要的作用大家(其实就是我，不然也不会有这篇笔记啦。。)用得比较少，先看一下下面这段代码</p>
+<figure class="highlight C++"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">template</span> &lt;<span class="keyword">class</span> Parm&gt;</div><div class="line">Parm minus( Parm* instance )</div><div class="line">{</div><div class="line">    Parm::name * p; <span class="comment">// 这是一个指针声明还是乘法?</span></div><div class="line">}</div></pre></td></tr></table></figure>
+
+<p>假设传入instance的类型如下：</p>
+<figure class="highlight C++"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">struct</span> Real</div><div class="line">{</div><div class="line">    <span class="keyword">typedef</span> <span class="keyword">int</span> name;</div><div class="line">    ...</div><div class="line">};</div></pre></td></tr></table></figure>
+
+<p>像这种情况，name会被编译器视作Parm类的静态变量，但是很明显，<code>Parm::name *p</code>的本意是想声明一个指针的，这时候就需要在前面加一个<code>typename</code>，这样编译器就知道<code>Parm::name</code>是一个类型了。</p>
+<figure class="highlight C++"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">template</span> &lt;<span class="keyword">class</span> Parm&gt;</div><div class="line">Parm minus( Parm* instance )</div><div class="line">{</div><div class="line">    <span class="keyword">typename</span> Parm::name * p; <span class="comment">// 这是一个指针声明</span></div><div class="line">}</div></pre></td></tr></table></figure>
+
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://danye.me/2015/04/27/nested-type/" data-id="6zp0v4lx4ja45jwn" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/C/">C++</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/STL/">STL</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nested-type/">nested type</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+  
+</section>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2016 Huaguan, Ma<br>
+      <a href="https://github.com/steven5538/hexo-theme-athena" target="_blank">Athena</a> by <a href="http://steven5538.tw" target="_blank">Steven5538</a> | Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css" type="text/css">
+
+  <script src="/fancybox/jquery.fancybox.pack.js" type="text/javascript"></script>
+
+
+
+<script src="/js/script.js" type="text/javascript"></script>
+
+  </div>
+</body>
+</html>

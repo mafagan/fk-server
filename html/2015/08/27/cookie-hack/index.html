@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>利用cookie可以做的一些事情 | 坚强的鸡蛋</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="记得还是在学Qt编程的时候，做过一个练手项目，产品是一个搜索Chrome的cookie内容的小软件。Chrome的cookie保存在用户目录的一个sqlite文件中，具体路径上网搜一下就知道了。当时比较天真，想看看cookie里面有没有明文保存的密码，结果当然是得到一堆乱码，最后就不了了之了。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="利用cookie可以做的一些事情">
+<meta property="og:url" content="https://danye.me/2015/08/27/cookie-hack/">
+<meta property="og:site_name" content="坚强的鸡蛋">
+<meta property="og:description" content="记得还是在学Qt编程的时候，做过一个练手项目，产品是一个搜索Chrome的cookie内容的小软件。Chrome的cookie保存在用户目录的一个sqlite文件中，具体路径上网搜一下就知道了。当时比较天真，想看看cookie里面有没有明文保存的密码，结果当然是得到一堆乱码，最后就不了了之了。">
+<meta property="og:image" content="https://danye.me/image/142511824063.png">
+<meta property="og:image" content="https://danye.me/image/142511824132.png">
+<meta property="og:image" content="https://danye.me/image/142511824183.png">
+<meta property="og:image" content="https://danye.me/image/14251182423.png">
+<meta property="og:image" content="https://danye.me/image/142511824283.png">
+<meta property="og:image" content="https://danye.me/image/142511824335.png">
+<meta property="og:image" content="https://danye.me/image/142511824386.png">
+<meta property="og:image" content="https://danye.me/image/142511824443.png">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="利用cookie可以做的一些事情">
+<meta name="twitter:description" content="记得还是在学Qt编程的时候，做过一个练手项目，产品是一个搜索Chrome的cookie内容的小软件。Chrome的cookie保存在用户目录的一个sqlite文件中，具体路径上网搜一下就知道了。当时比较天真，想看看cookie里面有没有明文保存的密码，结果当然是得到一堆乱码，最后就不了了之了。">
+
+  
+    <link rel="alternative" href="/atom.xml" title="坚强的鸡蛋" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  <link href="//fonts.googleapis.com/css?family=Ubuntu" rel="stylesheet" type="text/css">
+  <link rel="stylesheet" href="/css/style.css" type="text/css">
+
+  
+</head>
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">坚强的鸡蛋</a>
+      </h1>
+      
+        <h2 id="subtitle-wrap">
+          <a href="/" id="subtitle">Collect the dots in your life.</a>
+        </h2>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="sub-nav">
+        
+          <a id="nav-home-icon" class="nav-icon" href="/"></a>
+        
+          <a id="nav-archives-icon" class="nav-icon" href="/archives"></a>
+        
+          <a id="nav-about-icon" class="nav-icon" href="/about"></a>
+        
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+      </nav>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-cookie-hack" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      利用cookie可以做的一些事情
+    </h1>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2015-08-27T15:15:00.000Z" itemprop="datePublished">08-27-2015</time>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/coding/">coding</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>记得还是在学Qt编程的时候，做过一个练手项目，产品是一个搜索Chrome的cookie内容的小软件。Chrome的cookie保存在用户目录的一个sqlite文件中，具体路径上网搜一下就知道了。当时比较天真，想看看cookie里面有没有明文保存的密码，结果当然是得到一堆乱码，最后就不了了之了。<br><a id="more"></a><br>直到前几天，我正在网上看一篇关于cookie的文章，忽然想起一件事情，我需要密码的原因无非是用来登录，我既然有了cookie直接发给服务器就可以了，又有什么必要了解cookie的内容？我顺手用chrome打开了微博私信查看下它的请求流程：<br><img src="https://danye.me/image/142511824063.png" alt="cookie-request-flow"></p>
+<p>貌似理论上没有什么问题，不过还是要做个试验验证一下，我准备尝试用python写个小程序模拟浏览器向微博服务器发起私信消息的页面请求。</p>
+<p>当然首先还是让我的小伙伴给我发条私信：<br><img src="https://danye.me/image/142511824132.png" alt="cookie-message"></p>
+<h2 id="具体实现">具体实现</h2>
+<p>整个实验我简单的作了个概念图：<br><img src="https://danye.me/image/142511824183.png" alt="cookie-flow"></p>
+<p>实验主要分为以下几个步骤：</p>
+<ul>
+<li>从chrome的sqlite文件中提取cookie</li>
+<li>模拟浏览器组装header</li>
+<li>向服务器发起目标页面的请求</li>
+</ul>
+<h2 id="提取chrome的cookie信息">提取chrome的cookie信息</h2>
+<p>chrome的cookie保存路径在三大操作系统Windows、Linux和OSX上都不尽相同，以linux为例，它的保存路径就是<code>～/.config/chromium/Default/Cookies</code>，我们先用sqlite3程序把这个文件载入进来看看：<br><img src="https://danye.me/image/14251182423.png" alt="cookie-tables"><br>cookie信息都保存在表<code>cookies</code>中，但是才刚开始就出现了意想不到的问题：<br><img src="https://danye.me/image/142511824283.png" alt="cookie-values-problem"></p>
+<p>表里面的值和记忆中的大部分都是一样的，唯独最重要的value一项，居然是空的，而在末尾倒是多了个<code>encrypted_value</code>項。谷歌了一下，了解到在chrome版本33之前，cookie都是直接存储的，在33+之后，谷歌开始对cookie的信息进行了加密。顺便感慨下时光飞逝，不知不觉又老了几个版本。chrome在windows上加密采用的是CryptUnprotectData函数，解密方法大家可以看<a href="http://www.ftium4.com/chrome-cookies-encrypted-value-python.html" target="_blank" rel="external">这里</a>。Linux和OSX上的加密方法相似，都采用的是AES(CBC)加密方法，了解密码学的都知道对这个数据进行解密至少需要好几个值，salt，key length，iv，password，iterations等等。不过不幸的是一位国外的网友n8henrie在浏览了chromium源码之后把这些值统统找到了，以下是他原话：</p>
+<ul>
+<li>salt is <code>b&#39;saltysalt&#39;</code></li>
+<li>key length is <code>16</code></li>
+<li><code>iv</code> is 16 bytes of space <code>b&#39; &#39; * 16</code></li>
+<li>on <code>Mac OSX</code>:<br>  <code>password</code> is in keychain under <code>Chrome Safe Storage</code><br>  I use the excellent keyring package to get the password<br>  You could also use bash: <code>security find-generic-password -w -s &quot;Chrome Safe Storage&quot;</code><br>  number of iterations is <code>1003</code></li>
+<li>on Linux:<br>  password is <code>peanuts</code><br>  number of iterations is <code>1</code></li>
+</ul>
+<p>顺便贴出他给出的源代码(可能是原作者的失误，在clean函数中忘记调用了ord函数，特此补上)：</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div></pre></td><td class="code"><pre><div class="line"><span class="comment">#! /usr/bin/env python3</span></div><div class="line"></div><div class="line"><span class="keyword">from</span> Crypto.Cipher <span class="keyword">import</span> AES</div><div class="line"><span class="keyword">from</span> Crypto.Protocol.KDF <span class="keyword">import</span> PBKDF2</div><div class="line"></div><div class="line"><span class="comment"># Function to get rid of padding</span></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">clean</span><span class="params">(x)</span>:</span> </div><div class="line">    <span class="keyword">return</span> x[:-ord(x[-<span class="number">1</span>])].decode(<span class="string">'utf8'</span>)</div><div class="line"></div><div class="line"><span class="comment"># replace with your encrypted_value from sqlite3</span></div><div class="line">encrypted_value = ENCRYPTED_VALUE </div><div class="line"></div><div class="line"><span class="comment"># Trim off the 'v10' that Chrome/ium prepends</span></div><div class="line">encrypted_value = encrypted_value[<span class="number">3</span>:]</div><div class="line"></div><div class="line"><span class="comment"># Default values used by both Chrome and Chromium in OSX and Linux</span></div><div class="line">salt = <span class="string">b'saltysalt'</span></div><div class="line">iv = <span class="string">b' '</span> * <span class="number">16</span></div><div class="line">length = <span class="number">16</span></div><div class="line"></div><div class="line"><span class="comment"># On Mac, replace MY_PASS with your password from Keychain</span></div><div class="line"><span class="comment"># On Linux, replace MY_PASS with 'peanuts'</span></div><div class="line">my_pass = MY_PASS</div><div class="line">my_pass = my_pass.encode(<span class="string">'utf8'</span>)</div><div class="line"></div><div class="line"><span class="comment"># 1003 on Mac, 1 on Linux</span></div><div class="line">iterations = <span class="number">1003</span></div><div class="line"></div><div class="line">key = PBKDF2(my_pass, salt, length, iterations)</div><div class="line">cipher = AES.new(key, AES.MODE_CBC, IV=iv)</div><div class="line"></div><div class="line">decrypted = cipher.decrypt(encrypted_value)</div><div class="line">print(clean(decrypted))</div></pre></td></tr></table></figure>
+
+<p>我稍微改了下源代码，对上图header里的cookie的第一項尝试进行解密：</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">from</span> Crypto.Cipher <span class="keyword">import</span> AES</div><div class="line"><span class="keyword">from</span> Crypto.Protocol.KDF <span class="keyword">import</span> PBKDF2</div><div class="line"></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">clean</span><span class="params">(x)</span>:</span> </div><div class="line">    <span class="keyword">return</span> x[:-ord(x[-<span class="number">1</span>])].decode(<span class="string">'utf8'</span>)</div><div class="line"></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">decrypt</span><span class="params">(encrypted_value)</span>:</span></div><div class="line">    encrypted_value = encrypted_value[<span class="number">3</span>:]</div><div class="line"></div><div class="line">    salt = <span class="string">b'saltysalt'</span></div><div class="line">    iv = <span class="string">b' '</span> * <span class="number">16</span></div><div class="line">    length = <span class="number">16</span></div><div class="line"></div><div class="line">    my_pass = <span class="string">'peanuts'</span></div><div class="line">    my_pass = my_pass.encode(<span class="string">'utf8'</span>)</div><div class="line"></div><div class="line">    iterations = <span class="number">1</span></div><div class="line"></div><div class="line">    key = PBKDF2(my_pass, salt, length, iterations)</div><div class="line">    cipher = AES.new(key, AES.MODE_CBC, IV=iv)</div><div class="line">    decrypted = cipher.decrypt(encrypted_value)</div><div class="line">    </div><div class="line">    <span class="keyword">return</span> clean(decrypted)</div><div class="line"></div><div class="line">cx = sqlite3.connect(os.path.expandvars(<span class="string">'$HOME'</span>) + <span class="string">'/.config/chromium/Default/Cookies'</span>)</div><div class="line">cu = cx.cursor()</div><div class="line"></div><div class="line">cu.execute(<span class="string">"select * from cookies where host_key = '.weibo.com' and name = 'SINAGLOBAL'"</span>)</div><div class="line">    </div><div class="line">res = cu.fetchone()</div><div class="line">    </div><div class="line"><span class="keyword">print</span> decrypt(res[len(res)-<span class="number">1</span>])</div></pre></td></tr></table></figure>
+
+<p>结果显示n8henrie给出的值确实是正确的，解密成功。<br><img src="https://danye.me/image/142511824335.png" alt="cookie-value-chrome"><br><img src="https://danye.me/image/142511824386.png" alt="cookie-chomre"></p>
+<p>这个值我们不知道有什么意义，因为本来就不需要，直接把它发给服务器就好，服务器自己知道怎么解密的。</p>
+<p>cookie值解密出来之后，感觉就像是突然变成了宿管阿姨，手里握着整栋宿舍的钥匙。</p>
+<h2 id="组装header">组装header</h2>
+<p>组装header这里比较容易了，基本上照着上面截下来的Chrome的header照抄就好了，不过要注意的是记得把<code>Accept-Encoding:gzip，deflate，sdch</code>这一项去掉，不然返回的数据是经过压缩的，最后再加上解密出来的cookie，一个完整的header就出来了。</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">import</span> sqlite3</div><div class="line"><span class="keyword">import</span> urllib2</div><div class="line"><span class="keyword">import</span> os</div><div class="line"></div><div class="line">cx = sqlite3.connect(os.path.expandvars(<span class="string">'$HOME'</span>) + <span class="string">'/.config/chromium/Default/Cookies'</span>)</div><div class="line">cu = cx.cursor()</div><div class="line">cu.execute(<span class="string">"select * from cookies where host_key = '.weibo.com'"</span>)</div><div class="line"></div><div class="line">cookies = <span class="string">''</span></div><div class="line"></div><div class="line"><span class="keyword">for</span> res <span class="keyword">in</span> cu.fetchall(): </div><div class="line">    cookies += res[<span class="number">2</span>] + <span class="string">'='</span> + decrypt(res[len(res)-<span class="number">1</span>]) + <span class="string">'; '</span></div><div class="line"></div><div class="line">url = <span class="string">'http://weibo.com/messages'</span></div><div class="line"></div><div class="line">header = {</div><div class="line">        <span class="string">'Accept'</span>: <span class="string">'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'</span>,</div><div class="line">        #<span class="string">'Accept-Encoding'</span>: <span class="string">'gzip, deflate, sdch'</span>,</div><div class="line">        <span class="string">'Accept-Language'</span>: <span class="string">'zh-CN,zh;q=0.8,en;q=0.6,ja;q=0.4,zh-TW;q=0.2'</span>,</div><div class="line">        <span class="string">'Cache-Control'</span>: <span class="string">'max-age=0'</span>,</div><div class="line">        <span class="string">'Connection'</span>: <span class="string">'keep-alive'</span>,</div><div class="line">        <span class="string">'Host'</span>: <span class="string">'weibo.com'</span>,</div><div class="line">        <span class="string">'Cookie'</span>: cookies,</div><div class="line">        <span class="string">'User-Agent'</span>: <span class="string">'Mozilla/5.0 (X11; Linux i686) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/40.0.2214.111 Chrome/40.0.2214.111 Safari/537.36'</span></div><div class="line">}</div><div class="line">request = urllib2.Request(url, headers=header)</div></pre></td></tr></table></figure>
+
+<h2 id="发送请求">发送请求</h2>
+<p>最后一步发送请求，把返回的数据打开看一下，私信消息已经在里面了。<br><img src="https://danye.me/image/142511824443.png" alt="cookie-msg-decode"></p>
+<h2 id="结语">结语</h2>
+<p>没想到整个过程还算是比较顺利的，而且还是在linux平台。随后我又在windows和OSX上进行了试验，windows的解密要更简单一点，而在OSX上获取<code>Chrome Safe Storage</code>的<code>password</code>的时候系统提醒需要获取授权，也就是说从目前来看只有苹果系挡住了这次攻击。不得不说cookie确实给我们带来了太多的便利，但是与此同时也牺牲了太多的安全性，网络发展到今天很多事情已经超出可控的范围，尤其是在中国这种软件氛围，谁知道各大软件产商有什么做不出来的，想要保护好自己，只能靠自己平时多长点心眼了。</p>
+<h2 id="References">References</h2>
+<ul>
+<li><a href="http://stackoverflow.com/questions/23153159/decrypting-chrome-iums-cookies/23727331#23727331" target="_blank" rel="external">http://stackoverflow.com/questions/23153159/decrypting-chrome-iums-cookies/23727331#23727331</a></li>
+<li><a href="http://n8henrie.com/2014/05/decrypt-chrome-cookies-with-python/" target="_blank" rel="external">http://n8henrie.com/2014/05/decrypt-chrome-cookies-with-python/</a></li>
+<li><a href="http://www.ftium4.com/chrome-cookies-encrypted-value-python.html" target="_blank" rel="external">http://www.ftium4.com/chrome-cookies-encrypted-value-python.html</a></li>
+</ul>
+<h2 id="转载请注明">转载请注明</h2>
+<p>原文地址： <a href="https://danye.me/2015/02/26/cookie-hack/" target="_blank" rel="external">https://danye.me/2015/02/26/cookie-hack/</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://danye.me/2015/08/27/cookie-hack/" data-id="0zrv5z2dd01e7ne8" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/aes/">aes</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/chrome/">chrome</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/cookie/">cookie</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/http/">http</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/python/">python</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2015/09/15/libevargs/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          libev回调函数的参数传递问题
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2015/08/15/linux-cpu-affinity/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">Linux中程序的CPU亲和性(affinity)</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2016 Huaguan, Ma<br>
+      <a href="https://github.com/steven5538/hexo-theme-athena" target="_blank">Athena</a> by <a href="http://steven5538.tw" target="_blank">Steven5538</a> | Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css" type="text/css">
+
+  <script src="/fancybox/jquery.fancybox.pack.js" type="text/javascript"></script>
+
+
+
+<script src="/js/script.js" type="text/javascript"></script>
+
+  </div>
+</body>
+</html>

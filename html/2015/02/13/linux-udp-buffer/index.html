@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>linux中udp缓冲区大小的查看与设置 | 坚强的鸡蛋</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="鉴于tcp有重传机制，更多的时候udp对收发缓冲区的大小可能更加敏感一点。
+udp缓冲区的大小主要和以下几个值有关：
+
+/proc/sys/net/core/rmem_max ——— udp缓冲区的最大值，单位字节，下同
+/proc/sys/net/core/rmem_default ———- udp缓冲区的默认值，如果不更改的话程序的udp缓冲区默认值就是这个。
+
+查看方法可以直接cat以上两个">
+<meta property="og:type" content="article">
+<meta property="og:title" content="linux中udp缓冲区大小的查看与设置">
+<meta property="og:url" content="https://danye.me/2015/02/13/linux-udp-buffer/">
+<meta property="og:site_name" content="坚强的鸡蛋">
+<meta property="og:description" content="鉴于tcp有重传机制，更多的时候udp对收发缓冲区的大小可能更加敏感一点。
+udp缓冲区的大小主要和以下几个值有关：
+
+/proc/sys/net/core/rmem_max ——— udp缓冲区的最大值，单位字节，下同
+/proc/sys/net/core/rmem_default ———- udp缓冲区的默认值，如果不更改的话程序的udp缓冲区默认值就是这个。
+
+查看方法可以直接cat以上两个">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="linux中udp缓冲区大小的查看与设置">
+<meta name="twitter:description" content="鉴于tcp有重传机制，更多的时候udp对收发缓冲区的大小可能更加敏感一点。
+udp缓冲区的大小主要和以下几个值有关：
+
+/proc/sys/net/core/rmem_max ——— udp缓冲区的最大值，单位字节，下同
+/proc/sys/net/core/rmem_default ———- udp缓冲区的默认值，如果不更改的话程序的udp缓冲区默认值就是这个。
+
+查看方法可以直接cat以上两个">
+
+  
+    <link rel="alternative" href="/atom.xml" title="坚强的鸡蛋" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  <link href="//fonts.googleapis.com/css?family=Ubuntu" rel="stylesheet" type="text/css">
+  <link rel="stylesheet" href="/css/style.css" type="text/css">
+
+  
+</head>
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">坚强的鸡蛋</a>
+      </h1>
+      
+        <h2 id="subtitle-wrap">
+          <a href="/" id="subtitle">Collect the dots in your life.</a>
+        </h2>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="sub-nav">
+        
+          <a id="nav-home-icon" class="nav-icon" href="/"></a>
+        
+          <a id="nav-archives-icon" class="nav-icon" href="/archives"></a>
+        
+          <a id="nav-about-icon" class="nav-icon" href="/about"></a>
+        
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+      </nav>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-linux-udp-buffer" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      linux中udp缓冲区大小的查看与设置
+    </h1>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2015-02-13T13:37:00.000Z" itemprop="datePublished">02-13-2015</time>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/coding/">coding</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>鉴于tcp有重传机制，更多的时候udp对收发缓冲区的大小可能更加敏感一点。</p>
+<p>udp缓冲区的大小主要和以下几个值有关：</p>
+<ol>
+<li>/proc/sys/net/core/rmem_max ——— udp缓冲区的最大值，单位字节，下同</li>
+<li>/proc/sys/net/core/rmem_default ———- udp缓冲区的默认值，如果不更改的话程序的udp缓冲区默认值就是这个。</li>
+</ol>
+<p>查看方法可以直接<code>cat</code>以上两个文件进行查看，也可以通过<code>sysctl</code>查看。<br><a id="more"></a></p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">sysctl <span class="operator">-a</span> | grep rmem_max</div></pre></td></tr></table></figure>
+
+<p>其实sysctl信息来源就是<code>proc</code>下的文件。</p>
+<h2 id="更改udp缓冲区大小">更改udp缓冲区大小</h2>
+<h2 id="#程序中进行更改">#程序中进行更改</h2>
+<p>程序中可以使用setsockopt函数与SO_RCVBUF选项对udp缓冲区的值进行更改，但是要注意不管设置的值有多大，超过rmem_max的部分都会被无视。</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div></pre></td><td class="code"><pre><div class="line">int a = value_wanted;</div><div class="line"><span class="keyword">if</span> (setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &a, sizeof(int)) == -<span class="number">1</span>) {</div><div class="line">    <span class="keyword">...</span></div><div class="line">}</div></pre></td></tr></table></figure>
+
+<h2 id="#更改系统值">#更改系统值</h2>
+<p>如果确实要把udp缓冲区改到一个比较大的值，那就需要更改rmem_max的值。<br>编辑/etc/rc.local文件添加以下代码可使系统在每次启动的时候自动更改系统缓冲区的最大值。</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">echo value_wanted &gt; /<span class="keyword">proc</span>/sys/net/core/rmem_default</div></pre></td></tr></table></figure>
+
+<p>或者在/etc/sysctl.conf添加以下代码即可在重启后永久生效。</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line"><span class="attribute">rmem_max</span>=<span class="string">MAX</span></div></pre></td></tr></table></figure>
+
+<p>不想重启的话使用命令<code>sysctl -p</code>即可。</p>
+<p>可以顺便看下setsockopt在linux下的相关实现</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">...</span></div><div class="line"></div><div class="line">case SO_SNDBUF:</div><div class="line">    <span class="keyword">if</span> (val &gt; sysctl_wmem_max)</div><div class="line">        val = sysctl_wmem_max;</div><div class="line"></div><div class="line">    <span class="keyword">if</span> ((val * <span class="number">2</span>) &lt; SOCK_MIN_SNDBUF)</div><div class="line">        sk-&gt;sk_sndbuf = SOCK_MIN_SNDBUF;</div><div class="line">    <span class="keyword">else</span></div><div class="line">        sk-&gt;sk_sndbuf = val * <span class="number">2</span>; //当然缓冲区在系统中的实际值要大一点，因为udp报头以及IP报头等都是需要空间的。</div><div class="line"><span class="keyword">...</span></div></pre></td></tr></table></figure>
+
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://danye.me/2015/02/13/linux-udp-buffer/" data-id="4k9swivd3c2umqpo" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/buffer/">buffer</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/linux/">linux</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/udp/">udp</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2015/02/21/wechat-lishi/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          微信红包算法探讨
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2015/01/06/youcompleteme/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">小丑的蝙蝠侠——YouCompleteMe</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2016 Huaguan, Ma<br>
+      <a href="https://github.com/steven5538/hexo-theme-athena" target="_blank">Athena</a> by <a href="http://steven5538.tw" target="_blank">Steven5538</a> | Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css" type="text/css">
+
+  <script src="/fancybox/jquery.fancybox.pack.js" type="text/javascript"></script>
+
+
+
+<script src="/js/script.js" type="text/javascript"></script>
+
+  </div>
+</body>
+</html>
