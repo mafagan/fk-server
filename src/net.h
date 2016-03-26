@@ -10,6 +10,10 @@
 
 typedef struct session {
     int sock;
+
+    struct event *read_ev;
+    struct event *write_ev;
+
     char header[HTTP_HEADER_SIZE];
     uint32_t buffer_cursor;
     uint32_t parse_cursor;
@@ -20,8 +24,10 @@ typedef struct session {
     request_parse_status_t parse_status;
 
     http_request_t request;
+    http_response_t response;
 } session_t;
 
 void init_listen_scoket();
+void finalize_session(session_t *session);
 
 #endif

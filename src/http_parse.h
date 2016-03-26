@@ -45,7 +45,9 @@
 
 #define HTTP_RESPONSE_BUF_SIZE         40960
 
+
 #define HTTP_ROOT_PATH                 "/home/winter/fk-server/html"
+#define HTTP_404_FILE                   "/404.html"
 
 struct session;
 
@@ -56,7 +58,7 @@ typedef enum {
     REQUEST_END
 } request_parse_status_t;
 
-typedef struct http_request{
+typedef struct http_request {
     uint16_t request_method;
     uint16_t request_protocal;
 
@@ -65,6 +67,17 @@ typedef struct http_request{
     char *uri;
 
 } http_request_t;
+
+typedef struct http_response {
+    uint16_t protocal;
+    uint16_t status_code;
+
+    char *rp_buf;
+
+    /* buffer length to write */
+    uint32_t bltw;
+    uint32_t write_cr;
+} http_response_t;
 
 void do_http_request_parse(struct session*);
 

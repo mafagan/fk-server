@@ -38,8 +38,7 @@ void read_cb(int sock, short event, void *arg)
 
     printf("recv %d bytes\n", ret);
     if (ret == 0) {
-        close(sock);
-
+        finalize_session(session);
     } else if (ret < 0) {
 
         //TODO
@@ -81,8 +80,13 @@ static void do_accept(int sock, short event, void *arg)
 
     if (read_ev == NULL) {
         perror("event_new() fail");
+        return;
     }
+
+    /* do not add write_ev here */
+    new_session->read_ev = read_ev;
     event_add(read_ev, NULL);
+
 }
 
 void  init_listen_scoket()
@@ -118,4 +122,9 @@ void  init_listen_scoket()
     assert(listen_event);
 
     event_add(listen_event, NULL);
+}
+
+void finalize_session(session_t *session)
+{
+    //TODO destroy session
 }
