@@ -44,7 +44,7 @@
 #define HTTP_PROTOCOL_LEN              0x0008
 
 #define HTTP_RESPONSE_BUF_SIZE         40960
-
+#define HTTP_HEADER_SIZE               4096
 
 #define HTTP_ROOT_PATH                 "/home/winter/fk-server/html"
 #define HTTP_404_FILE                   "/404.html"

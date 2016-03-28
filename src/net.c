@@ -35,8 +35,6 @@ void read_cb(int sock, short event, void *arg)
     int ret = read(sock, session->header,
             HTTP_HEADER_SIZE - session->buffer_cursor);
 
-
-    printf("recv %d bytes\n", ret);
     if (ret == 0) {
         finalize_session(session);
     } else if (ret < 0) {
@@ -127,4 +125,5 @@ void  init_listen_scoket()
 void finalize_session(session_t *session)
 {
     //TODO destroy session
+    close(session->sock);
 }

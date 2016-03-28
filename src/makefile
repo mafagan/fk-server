@@ -1,11 +1,11 @@
 
 CC=gcc
 LIBS=-lpthread -levent
-CFLAGS=-c -g -std=c11 -O2
-OBJS=main.o\
-	 net.o\
-	 util.o\
-	 http_parse.o
+CFLAGS=-c -g -D_BSD_SOURCE -std=c99
+OBJS=main.o \
+	 net.o \
+	 http_parse.o \
+	 util.o
 
 feike: $(OBJS)
 	$(CC) $^ -o $@ $(LIBS)
@@ -16,13 +16,14 @@ main.o: main.c
 util.o: util.c util.h
 	$(CC) $(CFLAGS) $< -o $@
 
+http_request.o: http_request.c http_request.h
+	$(CC) $(CFLAGS) $< -o $@
+
 net.o: net.c net.h
 	$(CC) $(CFLAGS) $< -o $@
 
-http_request.o: http_request.c http_request.h
-	$(CC) $(CFLAGS) $< -o $@
 
 .PHONY: clean
 
 clean:
-	-rm *.o feike
+	-rm *.o feike core

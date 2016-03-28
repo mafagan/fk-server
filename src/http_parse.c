@@ -2,14 +2,14 @@
 #include "net.h"
 #include "util.h"
 
+//#define _GNU_SOURCE
+#include <stdlib.h>
+
+
 #include <string.h>
 #include <unistd.h>
 #include <linux/limits.h>
 #include <assert.h>
-
-#define _GNU_SOURCE
-#include <stdlib.h>
-
 static void do_http_request_line_parse(struct session*);
 static void do_http_request_header_parse(struct session*);
 static void do_GET_response(struct session*);
@@ -21,7 +21,24 @@ static void add_content_length_header(uint32_t, char *);
 
 static void write_response_cb(int sock, short event, void *arg);
 
+static void remove_arguments(char *);
+
+
 extern struct event_base *base;
+
+void remove_arguments(char *uri)
+{
+    char *cr = uri;
+
+    while (*cr != '\0') {
+        if (*cr == '?') {
+            *cr = '\0';
+            break;
+        }
+
+        cr += 1;
+    }
+}
 
 void write_response_cb(int sock, short event, void *arg)
 {
@@ -85,7 +102,6 @@ void add_status_line(int protocol, int status_code, char *buffer)
     } else {
         ;
     }
-
     write_cr += ret;
 
     if (status_code == HTTP_OK) {
@@ -132,7 +148,7 @@ void do_GET_response(struct session *session)
      * Test code    *
      ****************/
     session->response.status_code = HTTP_OK;
-
+    session->response.protocal = session->request.request_protocal;
     char file_path[PATH_MAX];
     char r_path[PATH_MAX];
     uint32_t p_cr = 0;
@@ -143,6 +159,9 @@ void do_GET_response(struct session *session)
 
     ret = sscanf(session->request.uri, "%s", file_path + p_cr);
 
+    /* temporary solution */
+    remove_arguments(file_path);
+
     uint32_t fp_len = strlen(file_path);
 
     if (file_path[fp_len - 1] == '/')
@@ -150,26 +169,37 @@ void do_GET_response(struct session *session)
 
 
 
+    printf("GET: %s\n", file_path);
     char *r_ptr = realpath(file_path, r_path);
+
 
     if (r_ptr == NULL) {
         session->response.status_code = HTTP_NOT_FOUND;
         /* change r_path to 404.html */
 
-        r_path[0] = '\0';
+        file_path[0] = '\0';
         strcat(file_path, HTTP_ROOT_PATH);
         strcat(file_path, HTTP_404_FILE);
 
         r_ptr = realpath(file_path, r_path);
     }
 
+
     unsigned long f_size = get_file_size(r_path);
+
+    /* response buffer size = header size + content size
+     *      !!! linit file size here !!!
+     **************************************************/
+
+    session->response.rp_buf = (char*)calloc(HTTP_HEADER_SIZE + f_size,
+            sizeof(char));
 
     add_status_line(session->response.protocal,
             session->response.status_code, session->response.rp_buf);
 
     add_content_length_header(f_size, session->response.rp_buf);
     add_content_type_header(r_path, session->response.rp_buf);
+    add_server_header(session->response.rp_buf);
 
     char *file_content = (char*)calloc(f_size + 1, sizeof(char));
 
@@ -188,13 +218,13 @@ void do_GET_response(struct session *session)
     uint32_t bl = strlen(session->response.rp_buf);
     session->response.bltw = bl;
 
-    uint32_t wl = (session->sock, session->response.rp_buf,
+    uint32_t wl = write(session->sock, session->response.rp_buf,
             session->response.bltw);
 
     if (wl < 0) {
-
     } else if (wl == session->response.bltw) {
         /* response finish, clear session */
+        printf("%s", session->response.rp_buf);
     } else {
         session->response.write_cr = wl;
         struct event *write_ev = event_new(base, session->sock, EV_WRITE,
@@ -202,7 +232,6 @@ void do_GET_response(struct session *session)
 
         event_add(write_ev, NULL);
     }
-
 }
 
 void do_response(struct session *session)
@@ -218,6 +247,7 @@ void do_response(struct session *session)
 
 void do_http_request_line_parse(struct session *session)
 {
+
     char *header = session->header;
     uint32_t parse_cursor = session->parse_cursor;
     uint32_t pre_parse_cursor = session->pre_parse_cursor;
