@@ -1,6 +1,7 @@
 #include "http_parse.h"
 #include "net.h"
 #include "util.h"
+#include "clog.h"
 
 //#define _GNU_SOURCE
 #include <stdlib.h>
@@ -136,7 +137,8 @@ void add_content_type_header(char *file, char *buffer)
         snprintf(write_cr, HTTP_RESPONSE_BUF_SIZE - buf_used_len - 1,
                 "Content-Type: text/javascript\r\n");
     } else {
-
+        snprintf(write_cr, HTTP_RESPONSE_BUF_SIZE - buf_used_len - 1,
+                "Content-Type: application/octet-stream\r\n");
     }
 }
 
@@ -147,6 +149,7 @@ void do_GET_response(struct session *session)
     /****************
      * Test code    *
      ****************/
+
     session->response.status_code = HTTP_OK;
     session->response.protocal = session->request.request_protocal;
     char file_path[PATH_MAX];
@@ -167,9 +170,8 @@ void do_GET_response(struct session *session)
     if (file_path[fp_len - 1] == '/')
         strcat(file_path, "index.html");
 
+    log_debug("request from fd %d: %s", session->sock, file_path);
 
-
-    printf("GET: %s\n", file_path);
     char *r_ptr = realpath(file_path, r_path);
 
 
@@ -201,30 +203,42 @@ void do_GET_response(struct session *session)
     add_content_type_header(r_path, session->response.rp_buf);
     add_server_header(session->response.rp_buf);
 
-    char *file_content = (char*)calloc(f_size + 1, sizeof(char));
+    strcat(session->response.rp_buf, "\r\n");
 
-    FILE *stream = fopen(file_path, "r");
-    int read_num = fread(file_content, sizeof(char), f_size, stream);
+    uint32_t hd_len = strlen(session->response.rp_buf);
 
+    FILE *stream = fopen(r_path, "r");
+
+    if (stream == NULL) {
+        log_error("Open file failed: %s", file_path);
+        return;
+    }
+
+    int read_num = fread(session->response.rp_buf + hd_len,
+            sizeof(char), f_size, stream);
+
+    if (read_num != f_size) {
+        log_error("read file failed: %s", r_path);
+        return;
+    }
     fclose(stream);
 
 
-    strcat(session->response.rp_buf, "\r\n");
 
-    strcat(session->response.rp_buf, file_content);
 
-    strcat(session->response.rp_buf, "\0");
-
-    uint32_t bl = strlen(session->response.rp_buf);
+    uint32_t bl = hd_len + f_size;
     session->response.bltw = bl;
 
     uint32_t wl = write(session->sock, session->response.rp_buf,
             session->response.bltw);
 
+    log_debug("write to fd(%d) %d bytes, successfully write %d bytes",
+            session->sock, bl, wl);
+
     if (wl < 0) {
     } else if (wl == session->response.bltw) {
         /* response finish, clear session */
-        printf("%s", session->response.rp_buf);
+        //printf("%s", session->response.rp_buf);
     } else {
         session->response.write_cr = wl;
         struct event *write_ev = event_new(base, session->sock, EV_WRITE,

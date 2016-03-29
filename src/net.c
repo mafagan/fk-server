@@ -1,6 +1,7 @@
 #include "util.h"
 #include "net.h"
 #include "http_parse.h"
+#include "clog.h"
 
 #include <stdlib.h>
 #include <unistd.h>
@@ -8,6 +9,7 @@
 #include <assert.h>
 #include <stdint.h>
 #include <fcntl.h>
+#include <arpa/inet.h>
 
 extern struct event_base *base;
 
@@ -34,6 +36,9 @@ void read_cb(int sock, short event, void *arg)
     session_t *session = (session_t*)arg;
     int ret = read(sock, session->header,
             HTTP_HEADER_SIZE - session->buffer_cursor);
+
+
+    log_debug("recv %d bytes from fd %d", ret, session->sock);
 
     if (ret == 0) {
         finalize_session(session);
@@ -66,6 +71,8 @@ static void do_accept(int sock, short event, void *arg)
         return;
     }
 
+    log_debug("new socket:%d addr:%s port:%d", newfd,
+            inet_ntoa(cli_addr.sin_addr), ntohs(cli_addr.sin_port));
 
     session_t *new_session = (session_t*)malloc(sizeof(struct session));
     new_session->buffer_cursor = 0;
@@ -126,4 +133,6 @@ void finalize_session(session_t *session)
 {
     //TODO destroy session
     close(session->sock);
+    log_debug("close socket: %d", session->sock);
+    event_del(session->read_ev);
 }

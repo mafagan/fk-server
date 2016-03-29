@@ -11,3 +11,4 @@ unsigned long get_file_size(const char *path)
     if (stat(path, &statbuff) < 0) return filesize;
     else return statbuff.st_size;
 }
+
