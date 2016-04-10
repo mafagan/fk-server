@@ -67,7 +67,7 @@ static void do_accept(int sock, short event, void *arg)
             &sin_size);
 
     if (newfd < 0) {
-        perror("accept fail");
+        log_error("accept fail");
         return;
     }
 
@@ -94,9 +94,8 @@ static void do_accept(int sock, short event, void *arg)
 
 }
 
-void  init_listen_scoket()
+int create_listen_scoket()
 {
-    assert(base);
     evutil_socket_t listener;
     listener = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -119,8 +118,10 @@ void  init_listen_scoket()
         perror("listen error");
         exit(EXIT_FAILURE);
     }
+}
 
-
+void eventadd_listen_socket(evutil_socket_t listener)
+{
     struct event *listen_event = event_new(base, listener, EV_READ|EV_PERSIST,
             do_accept, NULL);
 

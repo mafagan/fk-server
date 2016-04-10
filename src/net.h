@@ -2,6 +2,7 @@
 #define _NET_H
 
 #include <event2/event.h>
+#include <event2/util.h>
 #include <stdint.h>
 
 #include "util.h"
@@ -27,7 +28,8 @@ typedef struct session {
     http_response_t response;
 } session_t;
 
-void init_listen_scoket();
+evutil_socket_t create_listen_scoket();
+void eventadd_listen_socket(evutil_socket_t);
 void finalize_session(session_t *session);
 
 #endif

@@ -2,8 +2,10 @@
 #define _UTIL_H
 
 #include <stdint.h>
+#include <unistd.h>
+#include <sys/types.h>
 
-#define DEFAULT_LISTEN_PORT 1080
+#define DEFAULT_LISTEN_PORT 8080
 #define DEFAULT_LISTEN_BACKLOG 5
 
 #define HTTP_HEADER_SIZE 4096
@@ -15,5 +17,8 @@
 
 
 unsigned long get_file_size(const char *path);
+
+int start_worker_processes(uint32_t workers, pid_t *workers_pid);
+
 
 #endif

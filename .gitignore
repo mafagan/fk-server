@@ -1,6 +1,6 @@
 *.o
-core
 *.out
+*.log
 
 feike
-
+core

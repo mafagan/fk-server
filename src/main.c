@@ -1,8 +1,10 @@
 #include <event2/event.h>
+#include <event2/util.h>
 
 #define CLOG_MAIN
 #include "clog.h"
 #include "net.h"
+#include "util.h"
 
 #define MY_LOGGER 0
 
@@ -10,13 +12,43 @@ struct event_base *base;
 
 int main(int argc, char **argv)
 {
-    int ret = clog_init_fd(MY_LOGGER, stdout->_fileno);
+    //int ret = clog_init_fd(MY_LOGGER, stdout->_fileno);
 
-    base = event_base_new();
-    init_listen_scoket();
-    event_base_dispatch(base);
+    /* O_APPEND is set */
+    clog_init_path(MY_LOGGER, "feike.log");
+    int workers = sysconf(_SC_NPROCESSORS_CONF);
+    pid_t master_pid = getpid();
+    log_debug("master %d begin to work", master_pid);
+    log_debug("detected %d cpu cores", workers);
 
-    clog_free(MY_LOGGER);
+
+    pid_t workers_pid[100];
+
+    evutil_socket_t listener = create_listen_scoket();
+
+    /* create worker process */
+
+    int workers_success_num = start_worker_processes(workers, workers_pid);
+
+    pid_t verify_pid = getpid();
+
+    if (verify_pid != master_pid) {
+        /* This is a worker process */
+        log_debug("worker %d begin to work", verify_pid);
+
+        base = event_base_new();
+        eventadd_listen_socket(listener);
+        event_base_dispatch(base);
+
+        clog_free(MY_LOGGER);
+
+    } else {
+        /* This is a master process */
+        log_debug("master %d continue to work", master_pid);
+
+        //TODO waitpids
+    }
+
     return 0;
 }
 

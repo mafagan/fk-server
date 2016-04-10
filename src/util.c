@@ -1,6 +1,10 @@
 #include "util.h"
+#include "clog.h"
 
 #include <sys/stat.h>
+#include <unistd.h>
+
+
 
 unsigned long get_file_size(const char *path)
 {
@@ -12,3 +16,31 @@ unsigned long get_file_size(const char *path)
     else return statbuff.st_size;
 }
 
+
+int start_worker_processes(uint32_t workers, pid_t *workers_pid)
+{
+
+    int i;
+
+    for (i = 0; i < workers; i++) {
+        pid_t pid = fork();
+
+        switch(pid) {
+        case -1:
+            log_error("failed to fork()");
+            return i;
+        case 0:
+            //TODO
+            return 0;
+
+        default:
+            workers_pid[i] = pid;
+            break;
+        }
+
+
+
+    }
+
+    return workers;
+}
