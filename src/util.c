@@ -4,7 +4,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-
+extern struct event_base *base;
+extern void free_net();
 
 unsigned long get_file_size(const char *path)
 {
@@ -38,9 +39,16 @@ int start_worker_processes(uint32_t workers, pid_t *workers_pid)
             break;
         }
 
-
-
     }
 
     return workers;
+}
+
+void worker_quit()
+{
+
+    free_net();
+
+    event_base_loopbreak(base);
+    event_base_free(base);
 }

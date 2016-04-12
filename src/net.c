@@ -13,6 +13,8 @@
 
 extern struct event_base *base;
 
+struct event *listen_event;
+
 static void read_cb(int sock, short event, void *arg);
 static void setnonblock(int fd);
 static void do_accept(int sock, short event, void *arg);
@@ -41,7 +43,7 @@ void read_cb(int sock, short event, void *arg)
     log_debug("recv %d bytes from fd %d", ret, session->sock);
 
     if (ret == 0) {
-        finalize_session(session);
+        free_session(session);
     } else if (ret < 0) {
 
         //TODO
@@ -79,6 +81,7 @@ static void do_accept(int sock, short event, void *arg)
     new_session->parse_cursor = 0;
     new_session->parse_status = REQUEST_LINE;
     new_session->sock = newfd;
+    new_session->write_ev = NULL;
 
     struct event *read_ev = event_new(base, newfd, EV_READ|EV_PERSIST,
             read_cb, (void*)new_session);
@@ -122,7 +125,7 @@ int create_listen_scoket()
 
 void eventadd_listen_socket(evutil_socket_t listener)
 {
-    struct event *listen_event = event_new(base, listener, EV_READ|EV_PERSIST,
+    listen_event = event_new(base, listener, EV_READ|EV_PERSIST,
             do_accept, NULL);
 
     assert(listen_event);
@@ -130,10 +133,22 @@ void eventadd_listen_socket(evutil_socket_t listener)
     event_add(listen_event, NULL);
 }
 
-void finalize_session(session_t *session)
+void free_session(session_t *session)
 {
-    //TODO destroy session
     close(session->sock);
     log_debug("close socket: %d", session->sock);
-    event_del(session->read_ev);
+
+    EV_FREE(session->read_ev);
+    EV_FREE(session->write_ev);
+
+    FREE(session->request.Accept);
+    FREE(session->request.uri);
+    FREE(session->response.rp_buf);
+    FREE(session);
+
+}
+
+void free_net()
+{
+    EV_FREE(listen_event);
 }

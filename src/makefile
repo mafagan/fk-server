@@ -5,7 +5,8 @@ CFLAGS=-c -g -D_BSD_SOURCE -std=c99
 OBJS=main.o \
 	 net.o \
 	 http_parse.o \
-	 util.o
+	 util.o \
+	 signal_handle.o
 
 feike: $(OBJS)
 	$(CC) $^ -o $@ $(LIBS)
@@ -22,6 +23,8 @@ http_request.o: http_request.c http_request.h
 net.o: net.c net.h
 	$(CC) $(CFLAGS) $< -o $@
 
+signal_handle.o: signal_handle.c signal_handle.h
+	$(CC) $(CFLAGS) $< -o $@
 
 .PHONY: clean
 

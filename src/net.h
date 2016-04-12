@@ -30,6 +30,7 @@ typedef struct session {
 
 evutil_socket_t create_listen_scoket();
 void eventadd_listen_socket(evutil_socket_t);
-void finalize_session(session_t *session);
+void free_session(session_t *session);
+void free_net();
 
 #endif
