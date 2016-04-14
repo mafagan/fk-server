@@ -1,19 +1,24 @@
 #include "signal_handle.h"
 #include "util.h"
+#include "clog.h"
 
 #include <signal.h>
 #include <event2/event.h>
 #include <assert.h>
+#include <unistd.h>
+#include <sys/types.h>
 
 extern struct event_base *base;
+extern pid_t workers_pid[100];
+extern int workers;
 
-static void master_signal_cb(evutil_socket_t, short, void *);
+static void master_signal_cb(int);
 static void worker_signal_cb(evutil_socket_t, short, void *);
 
 
 void master_sinal_event_init()
 {
-
+    signal(SIGINT, master_signal_cb);
 }
 
 void worker_sinal_event_init()
@@ -35,9 +40,18 @@ void worker_sinal_event_init()
 
 }
 
-void master_signal_cb(evutil_socket_t signal_socket, short event, void *arg)
+void master_signal_cb(int signum)
 {
-    //TODO send signal to workers
+    if (signum == SIGINT) {
+        log_debug("master recv signal SIGINT, killing workers");
+
+        int i;
+
+        for (i = 0; i < workers; i++) {
+            kill(workers_pid[i], SIGINT);
+        }
+
+    }
 }
 
 void worker_signal_cb(evutil_socket_t signal_socket, short event, void *arg)

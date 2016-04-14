@@ -1,5 +1,7 @@
 #include <event2/event.h>
 #include <event2/util.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #define CLOG_MAIN
 #include "clog.h"
@@ -9,6 +11,8 @@
 #define MY_LOGGER 0
 
 struct event_base *base;
+pid_t workers_pid[100];
+int workers;
 
 int main(int argc, char **argv)
 {
@@ -16,13 +20,12 @@ int main(int argc, char **argv)
 
     /* O_APPEND is set */
     clog_init_path(MY_LOGGER, "feike.log");
-    int workers = sysconf(_SC_NPROCESSORS_CONF);
+    workers = sysconf(_SC_NPROCESSORS_CONF);
     pid_t master_pid = getpid();
     log_debug("master %d begin to work", master_pid);
     log_debug("detected %d cpu cores", workers);
 
 
-    pid_t workers_pid[100];
 
     evutil_socket_t listener = create_listen_scoket();
 
@@ -47,6 +50,12 @@ int main(int argc, char **argv)
         log_debug("master %d continue to work", master_pid);
 
         //TODO waitpids
+
+        int i;
+
+        for (i = 0; i < workers_success_num; i++) {
+            waitpid(workers_pid[i], NULL, WUNTRACED);
+        }
     }
 
     return 0;
