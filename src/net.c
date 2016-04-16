@@ -64,12 +64,12 @@ void read_cb(int sock, short event, void *arg)
 static void do_accept(int sock, short event, void *arg)
 {
     struct sockaddr_in cli_addr;
-    int sin_size = sizeof(struct sockaddr_in);
+    socklen_t sin_size = sizeof(struct sockaddr_in);
     int newfd = accept(sock, (struct sockaddr*)&cli_addr,
             &sin_size);
 
     if (newfd < 0) {
-        log_error("accept fail");
+        log_error("accept fail, error code: %d", newfd);
         return;
     }
 
@@ -82,6 +82,8 @@ static void do_accept(int sock, short event, void *arg)
     new_session->parse_status = REQUEST_LINE;
     new_session->sock = newfd;
     new_session->write_ev = NULL;
+    bzero(&(new_session->request), sizeof(new_session->request));
+    bzero(&(new_session->response), sizeof(new_session->response));
 
     struct event *read_ev = event_new(base, newfd, EV_READ|EV_PERSIST,
             read_cb, (void*)new_session);
@@ -121,6 +123,8 @@ int create_listen_scoket()
         perror("listen error");
         exit(EXIT_FAILURE);
     }
+
+    return listener;
 }
 
 void eventadd_listen_socket(evutil_socket_t listener)
@@ -128,6 +132,7 @@ void eventadd_listen_socket(evutil_socket_t listener)
     listen_event = event_new(base, listener, EV_READ|EV_PERSIST,
             do_accept, NULL);
 
+    log_debug("add listen socket success");
     assert(listen_event);
 
     event_add(listen_event, NULL);
@@ -142,7 +147,9 @@ void free_session(session_t *session)
     EV_FREE(session->write_ev);
 
     FREE(session->request.Accept);
-    FREE(session->request.uri);
+
+    /* it is only a pointer, do not free it */
+    //FREE(session->request.uri);
     FREE(session->response.rp_buf);
     FREE(session);
 

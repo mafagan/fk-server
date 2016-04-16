@@ -7,6 +7,7 @@
 #include <assert.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 
 extern struct event_base *base;
 extern pid_t workers_pid[100];
@@ -16,12 +17,12 @@ static void master_signal_cb(int);
 static void worker_signal_cb(evutil_socket_t, short, void *);
 
 
-void master_sinal_event_init()
+void master_signal_event_init()
 {
     signal(SIGINT, master_signal_cb);
 }
 
-void worker_sinal_event_init()
+void worker_signal_event_init()
 {
     assert(base);
     struct event *signal_event;
@@ -50,6 +51,11 @@ void master_signal_cb(int signum)
         for (i = 0; i < workers; i++) {
             kill(workers_pid[i], SIGINT);
         }
+
+        for (i = 0; i < workers; i++) {
+            waitpid(workers_pid[i], NULL, WUNTRACED);
+        }
+
 
     }
 }

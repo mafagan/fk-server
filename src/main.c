@@ -7,6 +7,7 @@
 #include "clog.h"
 #include "net.h"
 #include "util.h"
+#include "signal_handle.h"
 
 #define MY_LOGGER 0
 
@@ -27,35 +28,45 @@ int main(int argc, char **argv)
 
 
 
+    base = event_base_new();
     evutil_socket_t listener = create_listen_scoket();
+    log_debug("get listen socket %d", listener);
 
     /* create worker process */
 
     int workers_success_num = start_worker_processes(workers, workers_pid);
+    if (workers_success_num < workers) {
+        log_error("failed to create workers");
+        exit(EXIT_FAILURE);
+    }
 
     pid_t verify_pid = getpid();
 
     if (verify_pid != master_pid) {
         /* This is a worker process */
+        event_reinit(base);
+
         log_debug("worker %d begin to work", verify_pid);
 
-        base = event_base_new();
         eventadd_listen_socket(listener);
+
+        worker_signal_event_init();
+
         event_base_dispatch(base);
 
+        log_debug("worker %d quit", verify_pid);
         clog_free(MY_LOGGER);
+        event_base_free(base);
 
     } else {
         /* This is a master process */
         log_debug("master %d continue to work", master_pid);
+        close(listener);
+        event_base_free(base);
+        master_signal_event_init();
+        pause();
 
-        //TODO waitpids
-
-        int i;
-
-        for (i = 0; i < workers_success_num; i++) {
-            waitpid(workers_pid[i], NULL, WUNTRACED);
-        }
+        log_debug("master %d quit", master_pid);
     }
 
     return 0;
