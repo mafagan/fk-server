@@ -17,7 +17,6 @@ static void do_GET_response(struct session*);
 static void do_response(struct session *session);
 static void add_content_type_header(char *file, char *buffer);
 static void add_status_line(int, int, char *);
-static void add_common_header(char *);
 static void add_content_length_header(uint32_t, char *);
 
 static void write_response_cb(int sock, short event, void *arg);
@@ -254,7 +253,6 @@ void do_response(struct session *session)
     if (session->request.request_method == HTTP_GET)
         do_GET_response(session);
     else {
-        printf("%d\n", session->request.request_method);
         //TODO
     }
 }
@@ -322,7 +320,6 @@ void do_http_request_header_parse(struct session *session)
 
 void do_http_request_parse(struct session* session)
 {
-    http_request_t *request = &(session->request);
 
     if (session->parse_status ==  REQUEST_LINE) {
         while (session->parse_cursor < session->buffer_cursor) {

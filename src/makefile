@@ -1,7 +1,7 @@
 
 CC=gcc
 LIBS=-lpthread -levent
-CFLAGS=-c -g -D_BSD_SOURCE -D_POSIX_SOURCE -std=c99
+CFLAGS=-Wall -c -g -D_BSD_SOURCE -D_POSIX_SOURCE -std=c99
 OBJS=main.o \
 	 net.o \
 	 http_parse.o \
@@ -26,7 +26,10 @@ net.o: net.c net.h
 signal_handle.o: signal_handle.c signal_handle.h
 	$(CC) $(CFLAGS) $< -o $@
 
-.PHONY: clean
+.PHONY: clean clear
 
 clean:
 	-rm *.o feike core
+
+clear: clean
+	-rm feike.log
