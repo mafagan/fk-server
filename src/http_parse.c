@@ -253,6 +253,7 @@ void do_response(struct session *session)
     if (session->request.request_method == HTTP_GET)
         do_GET_response(session);
     else {
+        log_error("not method GET");
         //TODO
     }
 }
@@ -272,8 +273,13 @@ void do_http_request_line_parse(struct session *session)
 
 
     if (strncmp("GET", header + pre_parse_cursor, method_str_length) == 0) {
+        log_debug("set method GET");
         session->request.request_method = HTTP_GET;
     } else {
+        log_error("can not parse GET");
+        log_error("%c%c%c|%d", header+pre_parse_cursor, header+pre_parse_cursor+1,
+                header+pre_parse_cursor+2, method_str_length);
+        log_error("%s", header);
         //TODO
     }
 
@@ -322,10 +328,12 @@ void do_http_request_parse(struct session* session)
 {
 
     if (session->parse_status ==  REQUEST_LINE) {
+        log_debug("parsing line");
+
         while (session->parse_cursor < session->buffer_cursor) {
             if (session->header[session->parse_cursor] == '\n') {
-                session->parse_cursor ++;
 
+                session->parse_cursor ++;
                 do_http_request_line_parse(session);
 
                 session->pre_parse_cursor = session->parse_cursor;
@@ -339,6 +347,8 @@ void do_http_request_parse(struct session* session)
 
 
     if (session->parse_status == REQUEST_HEADER) {
+
+        log_debug("parsing header");
 
         while (session->parse_cursor < session->buffer_cursor) {
             if (session->header[session->parse_cursor] == '\n') {
@@ -358,7 +368,10 @@ void do_http_request_parse(struct session* session)
     }
 
     if (session->parse_status == REQUEST_END) {
+        log_debug("doing response");
         do_response(session);
+    } else {
+        log_debug("%s", session->header);
     }
 
 

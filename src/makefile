@@ -26,10 +26,7 @@ net.o: net.c net.h
 signal_handle.o: signal_handle.c signal_handle.h
 	$(CC) $(CFLAGS) $< -o $@
 
-.PHONY: clean clear
+.PHONY: clean
 
 clean:
 	-rm *.o feike core
-
-clear: clean
-	-rm feike.log

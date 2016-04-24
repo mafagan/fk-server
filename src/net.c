@@ -42,6 +42,7 @@ void read_cb(int sock, short event, void *arg)
 
     log_debug("recv %d bytes from fd %d", ret, session->sock);
 
+
     if (ret == 0) {
         free_session(session);
     } else if (ret < 0) {
@@ -57,7 +58,7 @@ void read_cb(int sock, short event, void *arg)
         }
 
         do_http_request_parse(session);
-
+        log_debug("parse fd(%d) %d bytes", session->sock, ret);
     }
 }
 

@@ -41,7 +41,7 @@ int start_worker_processes(uint32_t workers, pid_t *workers_pid)
 
     }
 
-    return workers;
+    return i;
 }
 
 void worker_quit()
