@@ -41,8 +41,7 @@ void read_cb(int sock, short event, void *arg)
 
 
     log_debug("recv %d bytes from fd %d", ret, session->sock);
-
-
+    log_debug("%s", session->header);
     if (ret == 0) {
         free_session(session);
     } else if (ret < 0) {
@@ -58,7 +57,6 @@ void read_cb(int sock, short event, void *arg)
         }
 
         do_http_request_parse(session);
-        log_debug("parse fd(%d) %d bytes", session->sock, ret);
     }
 }
 
@@ -80,6 +78,7 @@ static void do_accept(int sock, short event, void *arg)
     session_t *new_session = (session_t*)malloc(sizeof(struct session));
     new_session->buffer_cursor = 0;
     new_session->parse_cursor = 0;
+    new_session->pre_parse_cursor = 0;
     new_session->parse_status = REQUEST_LINE;
     new_session->sock = newfd;
     new_session->write_ev = NULL;

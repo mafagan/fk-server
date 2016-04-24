@@ -53,6 +53,7 @@ void write_response_cb(int sock, short event, void *arg)
 
     } else if (wl == bltw - write_cr){
         /* finish response */
+        free_session(session);
     } else {
         session->response.write_cr += wl;
         event_add(session->write_ev, NULL);
@@ -238,6 +239,7 @@ void do_GET_response(struct session *session)
     } else if (wl == session->response.bltw) {
         /* response finish, clear session */
         //printf("%s", session->response.rp_buf);
+        free_session(session);
     } else {
         session->response.write_cr = wl;
         struct event *write_ev = event_new(base, session->sock, EV_WRITE,
@@ -264,6 +266,7 @@ void do_http_request_line_parse(struct session *session)
     char *header = session->header;
     uint32_t parse_cursor = session->parse_cursor;
     uint32_t pre_parse_cursor = session->pre_parse_cursor;
+    log_debug("pre_parse_cursor: %d", pre_parse_cursor);
     uint32_t tmpCursor = session->pre_parse_cursor;
 
     while (tmpCursor < session->parse_cursor
@@ -273,13 +276,9 @@ void do_http_request_line_parse(struct session *session)
 
 
     if (strncmp("GET", header + pre_parse_cursor, method_str_length) == 0) {
-        log_debug("set method GET");
         session->request.request_method = HTTP_GET;
     } else {
         log_error("can not parse GET");
-        log_error("%c%c%c|%d", header+pre_parse_cursor, header+pre_parse_cursor+1,
-                header+pre_parse_cursor+2, method_str_length);
-        log_error("%s", header);
         //TODO
     }
 

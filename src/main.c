@@ -18,10 +18,10 @@ int workers;
 
 int main(int argc, char **argv)
 {
-    //int ret = clog_init_fd(MY_LOGGER, stdout->_fileno);
-    //assert(ret == 0);
+    int ret = clog_init_fd(MY_LOGGER, stdout->_fileno);
+    assert(ret == 0);
     /* O_APPEND is set */
-    clog_init_path(MY_LOGGER, "feike.log");
+    //clog_init_path(MY_LOGGER, "feike.log");
     workers = sysconf(_SC_NPROCESSORS_CONF);
     pid_t master_pid = getpid();
     log_debug("master %d begin to work", master_pid);
@@ -35,7 +35,6 @@ int main(int argc, char **argv)
 
     /* create worker process */
 
-    workers = 1;
     int workers_success_num = start_worker_processes(workers, workers_pid);
 
     pid_t verify_pid = getpid();
