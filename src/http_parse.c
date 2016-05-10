@@ -53,6 +53,7 @@ void write_response_cb(int sock, short event, void *arg)
 
     } else if (wl == bltw - write_cr){
         /* finish response */
+        free_session(session);
     } else {
         session->response.write_cr += wl;
         event_add(session->write_ev, NULL);
@@ -238,6 +239,7 @@ void do_GET_response(struct session *session)
     } else if (wl == session->response.bltw) {
         /* response finish, clear session */
         //printf("%s", session->response.rp_buf);
+        free_session(session);
     } else {
         session->response.write_cr = wl;
         struct event *write_ev = event_new(base, session->sock, EV_WRITE,
@@ -253,6 +255,7 @@ void do_response(struct session *session)
     if (session->request.request_method == HTTP_GET)
         do_GET_response(session);
     else {
+        log_error("not method GET");
         //TODO
     }
 }
@@ -263,6 +266,7 @@ void do_http_request_line_parse(struct session *session)
     char *header = session->header;
     uint32_t parse_cursor = session->parse_cursor;
     uint32_t pre_parse_cursor = session->pre_parse_cursor;
+    log_debug("pre_parse_cursor: %d", pre_parse_cursor);
     uint32_t tmpCursor = session->pre_parse_cursor;
 
     while (tmpCursor < session->parse_cursor
@@ -274,6 +278,7 @@ void do_http_request_line_parse(struct session *session)
     if (strncmp("GET", header + pre_parse_cursor, method_str_length) == 0) {
         session->request.request_method = HTTP_GET;
     } else {
+        log_error("can not parse GET");
         //TODO
     }
 
@@ -322,10 +327,12 @@ void do_http_request_parse(struct session* session)
 {
 
     if (session->parse_status ==  REQUEST_LINE) {
+        log_debug("parsing line");
+
         while (session->parse_cursor < session->buffer_cursor) {
             if (session->header[session->parse_cursor] == '\n') {
-                session->parse_cursor ++;
 
+                session->parse_cursor ++;
                 do_http_request_line_parse(session);
 
                 session->pre_parse_cursor = session->parse_cursor;
@@ -339,6 +346,8 @@ void do_http_request_parse(struct session* session)
 
 
     if (session->parse_status == REQUEST_HEADER) {
+
+        log_debug("parsing header");
 
         while (session->parse_cursor < session->buffer_cursor) {
             if (session->header[session->parse_cursor] == '\n') {
@@ -358,7 +367,10 @@ void do_http_request_parse(struct session* session)
     }
 
     if (session->parse_status == REQUEST_END) {
+        log_debug("doing response");
         do_response(session);
+    } else {
+        log_debug("%s", session->header);
     }
 
 

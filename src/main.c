@@ -2,6 +2,7 @@
 #include <event2/util.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <assert.h>
 
 #define CLOG_MAIN
 #include "clog.h"
@@ -17,10 +18,10 @@ int workers;
 
 int main(int argc, char **argv)
 {
-    //int ret = clog_init_fd(MY_LOGGER, stdout->_fileno);
-
+    int ret = clog_init_fd(MY_LOGGER, stdout->_fileno);
+    assert(ret == 0);
     /* O_APPEND is set */
-    clog_init_path(MY_LOGGER, "feike.log");
+    //clog_init_path(MY_LOGGER, "feike.log");
     workers = sysconf(_SC_NPROCESSORS_CONF);
     pid_t master_pid = getpid();
     log_debug("master %d begin to work", master_pid);
@@ -61,6 +62,12 @@ int main(int argc, char **argv)
 
     } else {
         /* This is a master process */
+        if (workers_success_num < workers) {
+            log_error("failed to create workers, success num %d",
+                    workers_success_num);
+            exit(EXIT_FAILURE);
+        }
+
         log_debug("master %d continue to work", master_pid);
         close(listener);
         event_base_free(base);
