@@ -28,7 +28,7 @@ int start_worker_processes(uint32_t workers, pid_t *workers_pid)
 
         switch(pid) {
         case -1:
-            log_error("failed to fork()");
+            log_error("failed to fork() from lala %d", getpid());
             return i;
         case 0:
             //TODO

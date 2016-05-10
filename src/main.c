@@ -36,7 +36,8 @@ int main(int argc, char **argv)
 
     int workers_success_num = start_worker_processes(workers, workers_pid);
     if (workers_success_num < workers) {
-        log_error("failed to create workers");
+        log_error("failed to create workers, workers num %d",
+                workers_success_num);
         exit(EXIT_FAILURE);
     }
 
