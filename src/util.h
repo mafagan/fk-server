@@ -6,7 +6,7 @@
 #include <sys/types.h>
 #include <event2/event.h>
 
-#define DEFAULT_LISTEN_PORT 8080
+#define DEFAULT_LISTEN_PORT 10791
 #define DEFAULT_LISTEN_BACKLOG 5
 
 #define HTTP_HEADER_SIZE 4096

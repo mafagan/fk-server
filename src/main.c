@@ -74,6 +74,8 @@ int main(int argc, char **argv)
         for (i = 0; i < workers_success_num; i++) {
             waitpid(workers_pid[i], NULL, WUNTRACED);
         }
+
+        log_debug("system closed");
     }
 
     return 0;
