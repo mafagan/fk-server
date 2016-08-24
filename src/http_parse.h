@@ -46,7 +46,7 @@
 #define HTTP_RESPONSE_BUF_SIZE         40960
 #define HTTP_HEADER_SIZE               4096
 
-#define HTTP_ROOT_PATH                 "/home/margo/fk-server/html"
+#define HTTP_ROOT_PATH                 "/home/huaguan/dev/fk-server/html"
 #define HTTP_404_FILE                   "/404.html"
 
 struct session;
